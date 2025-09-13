@@ -36,6 +36,9 @@ export function useAuth() {
       console.log('🔄 AUTH STATE CHANGE DETECTED:')
       console.log('🔄 Event:', event)
       console.log('🔄 Session exists:', session ? 'YES' : 'NO')
+      console.log('🔄 Current URL when auth change detected:', window.location.href)
+      console.log('🔄 URL search params:', window.location.search)
+      console.log('🔄 URL hash:', window.location.hash)
       if (session) {
         console.log('🔄 Session data:', {
           access_token: session.access_token ? 'Present' : 'Missing',
@@ -60,6 +63,20 @@ export function useAuth() {
         console.log('👋 LOGOUT: User signed out')
       } else if (event === 'TOKEN_REFRESHED') {
         console.log('🔄 TOKEN: Token refreshed')
+      } else if (event === 'INITIAL_SESSION') {
+        console.log('🔄 INITIAL_SESSION: Checking for existing session on page load')
+        if (!session) {
+          console.log('⚠️ INITIAL_SESSION: No session found, but checking URL for OAuth callback...')
+          // Check if we're on an OAuth callback URL
+          const urlParams = new URLSearchParams(window.location.search)
+          const hashParams = new URLSearchParams(window.location.hash.substring(1))
+          console.log('🔍 URL params:', Object.fromEntries(urlParams))
+          console.log('🔍 Hash params:', Object.fromEntries(hashParams))
+          
+          if (hashParams.get('access_token') || urlParams.get('code')) {
+            console.log('🔍 OAuth callback detected in URL, waiting for session...')
+          }
+        }
       }
     })
 

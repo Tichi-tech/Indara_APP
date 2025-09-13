@@ -63,24 +63,30 @@ export const auth = {
     console.log('🔍 STEP 2: Supabase URL:', supabaseUrl)
     console.log('🔍 STEP 3: Supabase Key:', supabaseAnonKey.substring(0, 20) + '...')
     console.log('🔍 STEP 4: Is placeholder?', isPlaceholder)
+    console.log('🔍 STEP 4.5: Current window origin:', window.location.origin)
+    console.log('🔍 STEP 4.6: Current full URL:', window.location.href)
     
     try {
       console.log('🚀 STEP 5: Calling supabase.auth.signInWithOAuth...')
       
+      // Use the current origin for redirect
+      const redirectTo = window.location.origin
+      console.log('🔍 STEP 5.5: Redirect URL will be:', redirectTo)
+      
       const oauthOptions = {
         provider: 'google' as const,
         options: {
-          redirectTo: `${window.location.origin}`,
+          redirectTo: redirectTo,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
           },
-          skipBrowserRedirect: false
+          skipBrowserRedirect: false,
+          scopes: 'email profile'
         }
       }
       
       console.log('🚀 STEP 6: OAuth options:', oauthOptions)
-      console.log('🚀 STEP 7: Current URL origin:', window.location.origin)
       
       const result = await supabase.auth.signInWithOAuth(oauthOptions)
       
@@ -88,17 +94,7 @@ export const auth = {
       console.log('✅ STEP 9: Result data:', result.data)
       console.log('✅ STEP 10: Result error:', result.error)
       
-      return await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-          skipBrowserRedirect: false
-        }
-      })
+      return result
     } catch (error) {
       console.error('❌ STEP ERROR: Google OAuth catch block:', error)
       console.error('❌ Error type:', typeof error)
