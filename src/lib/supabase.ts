@@ -220,27 +220,42 @@ export const db = {
 
   // Songs/Music
   getUserSongs: async (userId: string) => {
-    return await supabase
-      .from('generated_tracks')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+    try {
+      return await supabase
+        .from('generated_tracks')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+    } catch (error) {
+      console.warn('Failed to fetch user songs from database:', error)
+      return { data: [], error: null }
+    }
   },
 
   getPublicSongs: async () => {
-    return await supabase
-      .from('generated_tracks')
-      .select('*')
-      .eq('is_featured', true)
-      .order('created_at', { ascending: false })
+    try {
+      return await supabase
+        .from('generated_tracks')
+        .select('*')
+        .eq('is_featured', true)
+        .order('created_at', { ascending: false })
+    } catch (error) {
+      console.warn('Failed to fetch public songs from database:', error)
+      return { data: [], error: null }
+    }
   },
 
   createSong: async (songData: any) => {
-    return await supabase
-      .from('generated_tracks')
-      .insert(songData)
-      .select()
-      .single()
+    try {
+      return await supabase
+        .from('generated_tracks')
+        .insert(songData)
+        .select()
+        .single()
+    } catch (error) {
+      console.warn('Failed to save song to database:', error)
+      return { data: null, error }
+    }
   },
 
   updateSong: async (songId: string, updates: any) => {

@@ -9,22 +9,25 @@ export function useAuth() {
 
   useEffect(() => {
     // Get initial session
-    auth.getCurrentUser()
-      .then(({ data: { user } = { user: null }, error }) => {
+    const initAuth = async () => {
+      try {
+        const { data: { user } = { user: null }, error } = await auth.getCurrentUser()
         if (error) {
-          console.warn('⚠️ No auth session found:', error.message)
+          console.warn('⚠️ No auth session found, continuing in offline mode')
           setUser(null)
         } else {
           console.log('👤 Current user:', user ? 'Authenticated' : 'Not authenticated')
           setUser(user)
         }
-        setLoading(false)
-      })
-      .catch((error) => {
-        console.error('❌ Error getting current user:', error)
+      } catch (error) {
+        console.warn('❌ Auth initialization failed, continuing in offline mode:', error)
         setUser(null)
+      } finally {
         setLoading(false)
-      })
+      }
+    }
+    
+    initAuth()
 
     // Listen for auth changes
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
