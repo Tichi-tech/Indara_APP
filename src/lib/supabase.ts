@@ -224,6 +224,7 @@ export const auth = {
   },
 
   onAuthStateChange: (callback: (event: string, session: any) => void) => {
+    console.log('🎧 AUTH LISTENER: Setting up auth state change listener')
     return supabase.auth.onAuthStateChange(callback)
   }
 }

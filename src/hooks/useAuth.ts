@@ -11,18 +11,20 @@ export function useAuth() {
     // Get initial session
     const initAuth = async () => {
       try {
+        console.log('🔄 AUTH INIT: Checking for existing session...')
         const { data: { user } = { user: null }, error } = await auth.getCurrentUser()
         if (error) {
-          console.warn('⚠️ No auth session found, continuing in offline mode')
+          console.warn('⚠️ AUTH INIT: No auth session found:', error.message)
           setUser(null)
         } else {
-          console.log('👤 Current user:', user ? 'Authenticated' : 'Not authenticated')
+          console.log('👤 AUTH INIT: Current user:', user ? `Authenticated (${user.email})` : 'Not authenticated')
           setUser(user)
         }
       } catch (error) {
-        console.warn('❌ Auth initialization failed, continuing in offline mode:', error)
+        console.warn('❌ AUTH INIT: Auth initialization failed:', error)
         setUser(null)
       } finally {
+        console.log('🏁 AUTH INIT: Loading complete')
         setLoading(false)
       }
     }
@@ -34,21 +36,30 @@ export function useAuth() {
       console.log('🔄 AUTH STATE CHANGE DETECTED:')
       console.log('🔄 Event:', event)
       console.log('🔄 Session exists:', session ? 'YES' : 'NO')
-      console.log('🔄 Session data:', session)
-      console.log('🔄 User data:', session?.user)
+      if (session) {
+        console.log('🔄 Session data:', {
+          access_token: session.access_token ? 'Present' : 'Missing',
+          user_id: session.user?.id,
+          user_email: session.user?.email,
+          provider: session.user?.app_metadata?.provider
+        })
+        console.log('🔄 User data:', session.user)
+      }
       console.log('🔄 Timestamp:', new Date().toISOString())
       
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
       
-      // Handle demo login - check for demo users
-      if (event === 'SIGNED_IN' && session?.user?.id?.startsWith('demo-user')) {
-        console.log('✅ DEMO LOGIN: Demo login successful')
-      } else if (event === 'SIGNED_IN') {
-        console.log('✅ REAL LOGIN: Real OAuth login successful')
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('✅ LOGIN SUCCESS: OAuth login successful')
         console.log('✅ User ID:', session?.user?.id)
         console.log('✅ User email:', session?.user?.email)
+        console.log('✅ Provider:', session?.user?.app_metadata?.provider)
+      } else if (event === 'SIGNED_OUT') {
+        console.log('👋 LOGOUT: User signed out')
+      } else if (event === 'TOKEN_REFRESHED') {
+        console.log('🔄 TOKEN: Token refreshed')
       }
     })
 

@@ -92,13 +92,17 @@ function App() {
 
   // Handle authentication state changes
   useEffect(() => {
+    console.log('🏠 APP: Auth state changed - loading:', authLoading, 'user:', user ? `${user.email}` : 'none')
     if (!authLoading) {
       if (user) {
         // User is authenticated, go to home
+        console.log('🏠 APP: User authenticated, navigating to home')
         setCurrentScreen('home');
       } else {
         // User is not authenticated, go to welcome
+        console.log('🏠 APP: User not authenticated, checking current screen:', currentScreen)
         if (['home', 'createMusic', 'mySongs', 'songPlayer', 'accountSettings', 'profile', 'notifications', 'userProfile'].includes(currentScreen)) {
+          console.log('🏠 APP: Redirecting to welcome screen')
           setCurrentScreen('welcome');
         }
       }
