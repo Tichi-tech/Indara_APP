@@ -66,6 +66,21 @@ export const auth = {
     console.log('🔍 STEP 4.5: Current window origin:', window.location.origin)
     console.log('🔍 STEP 4.6: Current full URL:', window.location.href)
     
+    if (isPlaceholder) {
+      console.warn('⚠️ Using placeholder Supabase credentials - OAuth will not work')
+      return { 
+        data: { 
+          user: {
+            id: 'demo-user-google',
+            email: 'google@example.com',
+            user_metadata: { name: 'Google User' }
+          },
+          session: { access_token: 'demo-token' }
+        }, 
+        error: null 
+      }
+    }
+    
     try {
       console.log('🚀 STEP 5: Calling supabase.auth.signInWithOAuth...')
       
@@ -81,8 +96,7 @@ export const auth = {
             access_type: 'offline',
             prompt: 'consent',
           },
-          skipBrowserRedirect: false,
-          scopes: 'email profile'
+          skipBrowserRedirect: false
         }
       }
       

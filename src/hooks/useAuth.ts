@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { User, Session } from '@supabase/supabase-js'
-import { auth } from '../lib/supabase'
+import { auth, supabase } from '../lib/supabase'
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
@@ -12,6 +12,31 @@ export function useAuth() {
     const initAuth = async () => {
       try {
         console.log('🔄 AUTH INIT: Checking for existing session...')
+        
+        // Check if we're returning from OAuth
+        const urlParams = new URLSearchParams(window.location.search)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1))
+        
+        if (hashParams.get('access_token') || urlParams.get('code')) {
+          console.log('🔍 OAUTH CALLBACK: Detected OAuth callback, waiting for session...')
+          // Wait a bit for Supabase to process the OAuth callback
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          
+          // Force refresh the session
+          console.log('🔄 OAUTH CALLBACK: Refreshing session...')
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+          console.log('🔍 OAUTH CALLBACK: Session after refresh:', session ? 'Found' : 'Not found')
+          console.log('🔍 OAUTH CALLBACK: Session error:', sessionError)
+          
+          if (session) {
+            console.log('✅ OAUTH CALLBACK: Session established successfully!')
+            setUser(session.user)
+            setSession(session)
+            setLoading(false)
+            return
+          }
+        }
+        
         const { data: { user } = { user: null }, error } = await auth.getCurrentUser()
         if (error) {
           console.warn('⚠️ AUTH INIT: No auth session found:', error.message)
@@ -39,6 +64,7 @@ export function useAuth() {
       console.log('🔄 Current URL when auth change detected:', window.location.href)
       console.log('🔄 URL search params:', window.location.search)
       console.log('🔄 URL hash:', window.location.hash)
+      
       if (session) {
         console.log('🔄 Session data:', {
           access_token: session.access_token ? 'Present' : 'Missing',
@@ -49,6 +75,13 @@ export function useAuth() {
         console.log('🔄 User data:', session.user)
       }
       console.log('🔄 Timestamp:', new Date().toISOString())
+      
+      // Clear URL parameters after successful OAuth
+      if (event === 'SIGNED_IN' && session && (window.location.hash || window.location.search.includes('code'))) {
+        console.log('🧹 OAUTH CALLBACK: Cleaning up URL after successful login')
+        const cleanUrl = window.location.origin + window.location.pathname
+        window.history.replaceState({}, document.title, cleanUrl)
+      }
       
       setSession(session)
       setUser(session?.user ?? null)
