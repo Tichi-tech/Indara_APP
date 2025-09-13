@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mtypyrdsboxrgzsxwsk.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10eXB5cnNkYnNveHJnenN4d3NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU1NzI0NzQsImV4cCI6MjA1MTE0ODQ3NH0.placeholder-signature'
+const isPlaceholder = supabaseAnonKey.includes('placeholder') || supabaseUrl.includes('placeholder')
 
 // Note: You should set these in your .env file for security
 console.log('🔗 Connecting to Supabase:', supabaseUrl)
@@ -28,10 +28,15 @@ export const auth = {
   },
 
   signInWithGoogle: async () => {
+    console.log('🔍 Attempting Google sign-in...')
     return await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}`
+        redirectTo: `${window.location.origin}`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
       }
     })
   },
