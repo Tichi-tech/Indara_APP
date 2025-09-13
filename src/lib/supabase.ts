@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mtypyrdsboxrgzsxwsk.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key'
 const isPlaceholder = supabaseAnonKey.includes('placeholder') || supabaseUrl.includes('placeholder')
 
 // Note: You should set these in your .env file for security
