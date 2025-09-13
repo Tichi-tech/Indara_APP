@@ -5,7 +5,7 @@ import { useSongs } from './hooks/useSongs';
 import WelcomeScreen from './components/WelcomeScreen';
 import SignInScreen from './components/SignInScreen';
 import CreateAccountScreen from './components/CreateAccountScreen';
-import PhoneNumberScreen from './components/PhoneNumberScreen';
+import PhoneAuthScreen from './components/PhoneAuthScreen';
 import VerificationScreen from './components/VerificationScreen';
 import NameEntryScreen from './components/NameEntryScreen';
 import OnboardingCompleteScreen from './components/OnboardingCompleteScreen';
@@ -55,8 +55,20 @@ export interface Song {
 function App() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { songs, publicSongs, createSong: createSongInDB } = useSongs();
+  
+  // All state declarations must come before useEffect hooks
+  const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [initialScreen, setInitialScreen] = useState<Screen>('welcome');
+  const [userName, setUserName] = useState('Sam lee');
+  const [userHandle, setUserHandle] = useState('samleeee');
+  const [phoneNumber, setPhoneNumber] = useState('+1 650-213-7379');
+  const [isSignInFlow, setIsSignInFlow] = useState(false);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<Song | null>(null);
+  const [isPlayerMinimized, setIsPlayerMinimized] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentSong, setCurrentSong] = useState<Song | null>(null);
 
   useEffect(() => {
     // Simulate app initialization
@@ -78,15 +90,20 @@ function App() {
     };
   }, []);
 
-  const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
-  const [userName, setUserName] = useState('Sam lee');
-  const [userHandle, setUserHandle] = useState('samleeee');
-  const [phoneNumber, setPhoneNumber] = useState('+1 650-213-7379');
-  const [isSignInFlow, setIsSignInFlow] = useState(false);
-  const [currentlyPlaying, setCurrentlyPlaying] = useState<Song | null>(null);
-  const [isPlayerMinimized, setIsPlayerMinimized] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentSong, setCurrentSong] = useState<Song | null>(null);
+  // Handle authentication state changes
+  useEffect(() => {
+    if (!authLoading) {
+      if (user) {
+        // User is authenticated, go to home
+        setCurrentScreen('home');
+      } else {
+        // User is not authenticated, go to welcome
+        if (['home', 'createMusic', 'mySongs', 'songPlayer', 'accountSettings', 'profile', 'notifications', 'userProfile'].includes(currentScreen)) {
+          setCurrentScreen('welcome');
+        }
+      }
+    }
+  }, [user, authLoading, currentScreen]);
 
   const handlePlaySong = (song: Song) => {
     setCurrentlyPlaying(song);
@@ -168,14 +185,16 @@ function App() {
   }
 
   const renderScreen = () => {
-    // If user is not authenticated, show auth screens
-    if (!user && !['welcome', 'signin', 'createAccount', 'phoneNumber', 'verification'].includes(currentScreen)) {
-      return (
-        <WelcomeScreen 
-          onCreateAccount={() => setCurrentScreen('createAccount')}
-          onSignIn={() => setCurrentScreen('signin')}
-        />
-      );
+    // If user is authenticated and still on auth screens, redirect to home
+    if (user && ['welcome', 'signin', 'createAccount', 'phoneNumber', 'verification', 'nameEntry', 'onboardingComplete'].includes(currentScreen)) {
+      setCurrentScreen('home');
+      return null;
+    }
+
+    // If user is not authenticated and not on auth screens, show welcome
+    if (!user && !['welcome', 'signin', 'createAccount', 'phoneNumber', 'verification', 'nameEntry', 'onboardingComplete'].includes(currentScreen)) {
+      setCurrentScreen('welcome');
+      return null;
     }
 
     switch (currentScreen) {
@@ -208,11 +227,10 @@ function App() {
         );
       case 'phoneNumber':
         return (
-          <PhoneNumberScreen 
+          <PhoneAuthScreen 
             onBack={() => setCurrentScreen(isSignInFlow ? 'signin' : 'createAccount')}
             onNext={() => setCurrentScreen('verification')}
-            onPhoneChange={setPhoneNumber}
-            isSignIn={isSignInFlow}
+            mode={isSignInFlow ? 'signin' : 'signup'}
           />
         );
       case 'verification':
@@ -226,8 +244,7 @@ function App() {
                 setCurrentScreen('nameEntry');
               }
             }}
-            phoneNumber={phoneNumber}
-            isSignIn={isSignInFlow}
+            mode={isSignInFlow ? 'signin' : 'create'}
           />
         );
       case 'nameEntry':
@@ -308,8 +325,7 @@ function App() {
               setUserName(name);
               setUserHandle(handle);
               setPhoneNumber(phone);
-            }
-            }
+            }}
           />
         );
       case 'notifications':
