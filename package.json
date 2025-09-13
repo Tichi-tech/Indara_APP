@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },
+  "engines": { "node": "20.x" },
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
