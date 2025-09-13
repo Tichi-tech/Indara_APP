@@ -9,12 +9,14 @@ export function useAuth() {
 
   useEffect(() => {
     // Get initial session
-    auth.getCurrentUser().then(({ data: { user }, error }) => {
+    auth.getCurrentUser().then(({ data: { user } = { user: null }, error }) => {
       if (error) {
-        console.error('❌ Error getting current user:', error)
+        console.warn('⚠️ No auth session found:', error.message)
+        setUser(null)
+      } else {
+        console.log('👤 Current user:', user ? 'Authenticated' : 'Not authenticated')
+        setUser(user)
       }
-      console.log('👤 Current user:', user ? 'Authenticated' : 'Not authenticated')
-      setUser(user)
       setLoading(false)
     })
 
