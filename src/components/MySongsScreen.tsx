@@ -17,23 +17,21 @@ interface Song {
   duration?: string;
 }
 
-interface HomeScreenProps {
+interface MySongsScreenProps {
+  onBack: () => void;
   onCreateMusic: () => void;
-  onMySongs: () => void;
   onAccountSettings: () => void;
   userName: string;
-  userHandle: string;
-  songs: Song[];
+  userSongs: Song[];
   onPlaySong: (song: Song) => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({
+const MySongsScreen: React.FC<MySongsScreenProps> = ({
+  onBack,
   onCreateMusic,
-  onMySongs,
   onAccountSettings,
-  userName,
-  userHandle: _userHandle,
-  songs,
+  userName: _userName,
+  userSongs,
   onPlaySong
 }) => {
   const [activeFilter, setActiveFilter] = useState('All');
@@ -44,7 +42,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     <div className="h-full bg-gray-50 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 bg-white">
-        <button className="w-10 h-10 flex items-center justify-center">
+        <button onClick={onBack} className="w-10 h-10 flex items-center justify-center">
           <ArrowLeft className="w-6 h-6 text-gray-800" />
         </button>
         <button className="w-10 h-10 flex items-center justify-center">
@@ -58,7 +56,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           <div className="grid grid-cols-2 gap-4">
             {/* My Songs Card */}
             <button
-              onClick={onMySongs}
               className="relative overflow-hidden bg-gradient-to-br from-blue-500 via-purple-600 to-orange-500 rounded-3xl p-6 h-32"
             >
               <div className="text-white text-left">
@@ -126,7 +123,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <Music className="w-5 h-5 text-gray-600" />
-              <span className="text-gray-600 font-medium">{songs.length} Songs</span>
+              <span className="text-gray-600 font-medium">{userSongs.length} Songs</span>
             </div>
             <button className="flex items-center gap-2 text-gray-600">
               <span className="font-medium">Filter</span>
@@ -153,7 +150,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
           {/* Songs List */}
           <div className="space-y-4 pb-20">
-            {songs.length === 0 ? (
+            {userSongs.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Music className="w-8 h-8 text-gray-400" />
@@ -167,7 +164,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                 </button>
               </div>
             ) : (
-              songs.map((song) => (
+              userSongs.map((song) => (
                 <div
                   key={song.id}
                   className="flex items-center gap-4 py-2"
@@ -294,4 +291,4 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   );
 };
 
-export default HomeScreen;
+export default MySongsScreen;

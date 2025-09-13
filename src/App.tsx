@@ -54,7 +54,7 @@ export interface Song {
 
 function App() {
   const { user, loading: authLoading, signOut } = useAuth();
-  const { songs, publicSongs, createSong: createSongInDB, setSongs } = useSongs();
+  const { songs, publicSongs, setSongs } = useSongs();
   
   // All state declarations must come before useEffect hooks
   const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
@@ -122,25 +122,6 @@ function App() {
     setCurrentScreen('home');
   };
 
-  const handleCreateComplete = (newSong: any) => {
-    const song = {
-      title: newSong.title,
-      description: newSong.description,
-      tags: newSong.tags,
-      image: newSong.image,
-      is_public: newSong.isPublic || false,
-      duration: newSong.duration || '3:45'
-    };
-    
-    createSongInDB(song).then(({ data, error }) => {
-      if (!error && data) {
-        setCurrentlyPlaying(data);
-        setCurrentSong(data);
-        setIsPlayerMinimized(false);
-        setCurrentScreen('songPlayer');
-      }
-    });
-  };
 
   const handleLogout = () => {
     signOut();
@@ -268,7 +249,7 @@ function App() {
         );
       case 'home':
         return (
-          <HomeScreen 
+          <HomeScreen
             onCreateMusic={() => setCurrentScreen('createMusic')}
             onMySongs={() => setCurrentScreen('mySongs')}
             onAccountSettings={() => setCurrentScreen('accountSettings')}
@@ -276,19 +257,21 @@ function App() {
             userHandle={userHandle}
             songs={publicSongs}
             onPlaySong={handlePlaySong}
+            onNameEntry={() => setCurrentScreen('nameEntry')}
           />
         );
       case 'createMusic':
         return (
-          <CreateMusicScreen 
-            onBack={() => setCurrentScreen('home')}
-            onCreateComplete={handleCreateComplete}
+          <CreateMusicScreen
+            onClose={() => setCurrentScreen('home')}
+            onPlaySong={handlePlaySong}
           />
         );
       case 'mySongs':
         return (
-          <MySongsScreen 
+          <MySongsScreen
             onBack={() => setCurrentScreen('home')}
+            onCreateMusic={() => setCurrentScreen('createMusic')}
             onAccountSettings={() => setCurrentScreen('accountSettings')}
             userSongs={songs}
             onPlaySong={handlePlaySong}

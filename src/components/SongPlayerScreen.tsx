@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Play, Pause, SkipBack, SkipForward, Heart, Share2, MoreHorizontal, Volume2, Repeat, Shuffle, ThumbsUp, ThumbsDown, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Share2, MoreHorizontal, Repeat, ThumbsUp, ThumbsDown, ChevronDown } from 'lucide-react';
 
 interface Song {
   id: string;

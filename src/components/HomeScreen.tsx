@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Play, MoreHorizontal, Star, TrendingUp, Share } from 'lucide-react';
+import { Search, Play, MoreHorizontal, Star, Share } from 'lucide-react';
 
 interface Song {
   id: string;
