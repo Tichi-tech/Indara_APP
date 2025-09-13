@@ -243,9 +243,7 @@ function App() {
               } else {
                 setCurrentScreen('nameEntry');
               }
-            }}
-            phoneNumber={phoneNumber}
-            isSignIn={isSignInFlow}
+            mode={isSignInFlow ? 'signin' : 'create'}
           />
         );
       case 'nameEntry':
