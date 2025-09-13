@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Play, MoreHorizontal, Star, Share } from 'lucide-react';
+import { Search, Play, MoreHorizontal, Star, TrendingUp, Share } from 'lucide-react';
 
 interface Song {
   id: string;
@@ -203,7 +203,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-20">
+      <div className="flex-1 overflow-y-auto pb-16">
         {activeTab === 'Discover' ? (
           <>
             {/* Healing Music Community Section */}
@@ -386,62 +386,62 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
-        <div className="max-w-md mx-auto px-6 py-3">
-          <div className="flex items-center justify-between">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-area-inset-bottom">
+        <div className="max-w-md mx-auto px-4 py-2">
+          <div className="flex items-center justify-around">
             {/* Home */}
-            <button className="flex flex-col items-center gap-1 py-2">
-              <div className="w-6 h-6 flex items-center justify-center">
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-black">
+            <button className="flex flex-col items-center gap-1 py-1 min-w-0">
+              <div className="w-5 h-5 flex items-center justify-center">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-black">
                   <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
                 </svg>
               </div>
-              <span className="text-xs font-medium text-black">Home</span>
+              <span className="text-xs font-medium text-black leading-none">Home</span>
             </button>
 
             {/* Library */}
             <button 
               onClick={onMySongs}
-              className="flex flex-col items-center gap-1 py-2"
+              className="flex flex-col items-center gap-1 py-1 min-w-0"
             >
-              <div className="w-6 h-6 flex items-center justify-center">
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-gray-400">
+              <div className="w-5 h-5 flex items-center justify-center">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-gray-400">
                   <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/>
                 </svg>
               </div>
-              <span className="text-xs font-medium text-gray-400">Library</span>
+              <span className="text-xs font-medium text-gray-400 leading-none">Library</span>
             </button>
 
             {/* Center Music Button */}
             <button 
               onClick={onCreateMusic}
-              className="w-14 h-14 bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-200"
+              className="w-12 h-12 bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-200 -mt-1"
             >
-              <svg viewBox="0 0 24 24" fill="white" className="w-7 h-7">
+              <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6">
                 <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
               </svg>
             </button>
 
             {/* Inbox */}
-            <button className="flex flex-col items-center gap-1 py-2 relative">
-              <div className="w-6 h-6 flex items-center justify-center relative">
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-gray-400">
+            <button className="flex flex-col items-center gap-1 py-1 relative min-w-0">
+              <div className="w-5 h-5 flex items-center justify-center relative">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-gray-400">
                   <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
                 </svg>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+                <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full"></div>
               </div>
-              <span className="text-xs font-medium text-gray-400">Inbox</span>
+              <span className="text-xs font-medium text-gray-400 leading-none">Inbox</span>
             </button>
 
             {/* Account */}
             <button 
               onClick={onAccountSettings}
-              className="flex flex-col items-center gap-1 py-2"
+              className="flex flex-col items-center gap-1 py-1 min-w-0"
             >
-              <div className="w-6 h-6 bg-gradient-to-br from-pink-500 to-orange-400 rounded-full flex items-center justify-center">
+              <div className="w-5 h-5 bg-gradient-to-br from-pink-500 to-orange-400 rounded-full flex items-center justify-center">
                 <span className="text-white text-xs font-bold">S</span>
               </div>
-              <span className="text-xs font-medium text-gray-400">Account</span>
+              <span className="text-xs font-medium text-gray-400 leading-none">Account</span>
             </button>
           </div>
         </div>
