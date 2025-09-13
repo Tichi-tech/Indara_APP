@@ -9,25 +9,41 @@ interface SignInScreenProps {
 
 const SignInScreen: React.FC<SignInScreenProps> = ({ onBack, onNext }) => {
   const handleGoogleSignIn = async () => {
-    console.log('🚀 Google sign-in button clicked')
+    console.log('🎯 BUTTON CLICK: Google sign-in button clicked')
+    console.log('🎯 TIMESTAMP:', new Date().toISOString())
+    console.log('🎯 USER AGENT:', navigator.userAgent)
+    console.log('🎯 CURRENT URL:', window.location.href)
+    
     try {
+      console.log('🎯 CALLING: auth.signInWithGoogle()')
       const { data, error } = await auth.signInWithGoogle();
-      console.log('Google sign-in response:', { data, error })
+      
+      console.log('📥 RESPONSE RECEIVED:')
+      console.log('📥 Data:', data)
+      console.log('📥 Error:', error)
+      console.log('📥 Data type:', typeof data)
+      console.log('📥 Error type:', typeof error)
       
       if (error) {
-        console.error('❌ Google sign-in error:', error);
+        console.error('❌ HANDLING ERROR:', error);
+        console.error('❌ Error message:', error.message);
         // Show user-friendly error message
         if (error.message.includes('popup')) {
+          console.log('🚨 POPUP ERROR DETECTED')
           alert('Please allow popups for this site and try again.');
         } else {
+          console.log('🚨 OTHER ERROR DETECTED')
           alert(`Google sign-in failed: ${error.message}`);
         }
       } else {
-        console.log('✅ Google sign-in initiated successfully', data)
+        console.log('✅ SUCCESS: Google sign-in initiated successfully')
+        console.log('✅ SUCCESS DATA:', data)
         // OAuth redirect will handle the rest
       }
     } catch (error) {
-      console.error('❌ Google sign-in catch error:', error);
+      console.error('❌ CATCH BLOCK: Unexpected error in handleGoogleSignIn:', error);
+      console.error('❌ CATCH TYPE:', typeof error);
+      console.error('❌ CATCH MESSAGE:', error instanceof Error ? error.message : 'Unknown');
       alert(`Unexpected error during Google sign-in: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };

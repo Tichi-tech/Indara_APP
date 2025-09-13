@@ -31,14 +31,24 @@ export function useAuth() {
 
     // Listen for auth changes
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
-      console.log('🔄 Auth state change:', event, session ? 'Session exists' : 'No session')
+      console.log('🔄 AUTH STATE CHANGE DETECTED:')
+      console.log('🔄 Event:', event)
+      console.log('🔄 Session exists:', session ? 'YES' : 'NO')
+      console.log('🔄 Session data:', session)
+      console.log('🔄 User data:', session?.user)
+      console.log('🔄 Timestamp:', new Date().toISOString())
+      
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
       
       // Handle demo login - check for demo users
       if (event === 'SIGNED_IN' && session?.user?.id?.startsWith('demo-user')) {
-        console.log('✅ Demo login successful')
+        console.log('✅ DEMO LOGIN: Demo login successful')
+      } else if (event === 'SIGNED_IN') {
+        console.log('✅ REAL LOGIN: Real OAuth login successful')
+        console.log('✅ User ID:', session?.user?.id)
+        console.log('✅ User email:', session?.user?.email)
       }
     })
 

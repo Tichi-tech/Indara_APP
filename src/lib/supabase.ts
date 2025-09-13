@@ -59,10 +59,35 @@ export const auth = {
   },
 
   signInWithGoogle: async () => {
-    console.log('🔍 Attempting Google sign-in...')
+    console.log('🔍 STEP 1: Starting Google sign-in process...')
+    console.log('🔍 STEP 2: Supabase URL:', supabaseUrl)
+    console.log('🔍 STEP 3: Supabase Key:', supabaseAnonKey.substring(0, 20) + '...')
+    console.log('🔍 STEP 4: Is placeholder?', isPlaceholder)
     
     try {
-      console.log('🚀 Starting Google OAuth flow...')
+      console.log('🚀 STEP 5: Calling supabase.auth.signInWithOAuth...')
+      
+      const oauthOptions = {
+        provider: 'google' as const,
+        options: {
+          redirectTo: `${window.location.origin}`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+          skipBrowserRedirect: false
+        }
+      }
+      
+      console.log('🚀 STEP 6: OAuth options:', oauthOptions)
+      console.log('🚀 STEP 7: Current URL origin:', window.location.origin)
+      
+      const result = await supabase.auth.signInWithOAuth(oauthOptions)
+      
+      console.log('✅ STEP 8: OAuth call completed')
+      console.log('✅ STEP 9: Result data:', result.data)
+      console.log('✅ STEP 10: Result error:', result.error)
+      
       return await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -75,7 +100,10 @@ export const auth = {
         }
       })
     } catch (error) {
-      console.error('Google OAuth error:', error)
+      console.error('❌ STEP ERROR: Google OAuth catch block:', error)
+      console.error('❌ Error type:', typeof error)
+      console.error('❌ Error message:', error instanceof Error ? error.message : 'Unknown error')
+      console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack')
       return { 
         data: null, 
         error: { 
