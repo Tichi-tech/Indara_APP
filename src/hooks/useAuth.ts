@@ -9,16 +9,22 @@ export function useAuth() {
 
   useEffect(() => {
     // Get initial session
-    auth.getCurrentUser().then(({ data: { user } = { user: null }, error }) => {
-      if (error) {
-        console.warn('⚠️ No auth session found:', error.message)
+    auth.getCurrentUser()
+      .then(({ data: { user } = { user: null }, error }) => {
+        if (error) {
+          console.warn('⚠️ No auth session found:', error.message)
+          setUser(null)
+        } else {
+          console.log('👤 Current user:', user ? 'Authenticated' : 'Not authenticated')
+          setUser(user)
+        }
+        setLoading(false)
+      })
+      .catch((error) => {
+        console.error('❌ Error getting current user:', error)
         setUser(null)
-      } else {
-        console.log('👤 Current user:', user ? 'Authenticated' : 'Not authenticated')
-        setUser(user)
-      }
-      setLoading(false)
-    })
+        setLoading(false)
+      })
 
     // Listen for auth changes
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
@@ -26,6 +32,11 @@ export function useAuth() {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+      
+      // Handle demo login
+      if (event === 'SIGNED_IN' && session?.user?.id?.includes('demo-user')) {
+        console.log('✅ Demo login successful')
+      }
     })
 
     return () => subscription.unsubscribe()

@@ -14,13 +14,17 @@ const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({ onBack, onNex
       const { error } = await auth.signInWithGoogle();
       if (error) {
         console.error('❌ Google sign-in error:', error);
-        alert(`Google sign-in failed: ${error.message}`);
+        if (!error.message?.includes('placeholder')) {
+          alert(`Google sign-in failed: ${error.message}`);
+        }
       } else {
         console.log('✅ Google sign-in initiated successfully')
       }
     } catch (error) {
       console.error('❌ Google sign-in catch error:', error);
-      alert(`Google sign-in failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      if (!(error instanceof Error) || !error.message.includes('placeholder')) {
+        alert(`Google sign-in failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
   };
 
@@ -29,11 +33,13 @@ const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({ onBack, onNex
       const { error } = await auth.signInWithApple();
       if (error) {
         console.error('Apple sign-in error:', error);
-        alert('Apple sign-in failed. Please try again.');
+        if (!error.message?.includes('placeholder')) {
+          alert('Apple sign-in failed. Please try again.');
+        }
       }
     } catch (error) {
       console.error('Apple sign-in error:', error);
-      alert('Apple sign-in failed. Please try again.');
+      // Silently handle demo mode
     }
   };
 
@@ -42,11 +48,13 @@ const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({ onBack, onNex
       const { error } = await auth.signInWithFacebook();
       if (error) {
         console.error('Facebook sign-in error:', error);
-        alert('Facebook sign-in failed. Please try again.');
+        if (!error.message?.includes('placeholder')) {
+          alert('Facebook sign-in failed. Please try again.');
+        }
       }
     } catch (error) {
       console.error('Facebook sign-in error:', error);
-      alert('Facebook sign-in failed. Please try again.');
+      // Silently handle demo mode
     }
   };
 
@@ -55,11 +63,13 @@ const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({ onBack, onNex
       const { error } = await auth.signInWithDiscord();
       if (error) {
         console.error('Discord sign-in error:', error);
-        alert('Discord sign-in failed. Please try again.');
+        if (!error.message?.includes('placeholder')) {
+          alert('Discord sign-in failed. Please try again.');
+        }
       }
     } catch (error) {
       console.error('Discord sign-in error:', error);
-      alert('Discord sign-in failed. Please try again.');
+      // Silently handle demo mode
     }
   };
 

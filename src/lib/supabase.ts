@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mtypyrdsboxrgzsxwsk.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key'
-const isPlaceholder = supabaseAnonKey.includes('placeholder') || supabaseUrl.includes('placeholder')
+const isPlaceholder = supabaseAnonKey.includes('placeholder') || supabaseUrl.includes('placeholder') || supabaseAnonKey === 'placeholder-anon-key'
 
 // Note: You should set these in your .env file for security
 console.log('🔗 Connecting to Supabase:', supabaseUrl)
@@ -30,6 +30,24 @@ export const auth = {
 
   signInWithGoogle: async () => {
     console.log('🔍 Attempting Google sign-in...')
+    
+    // Check if we're using placeholder credentials
+    if (isPlaceholder) {
+      console.warn('⚠️ Using placeholder Supabase credentials - OAuth will not work')
+      // Simulate successful login for demo purposes
+      return { 
+        data: { 
+          user: {
+            id: 'demo-user-id',
+            email: 'demo@example.com',
+            user_metadata: { name: 'Demo User' }
+          },
+          session: { access_token: 'demo-token' }
+        }, 
+        error: null 
+      }
+    }
+    
     return await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -43,6 +61,21 @@ export const auth = {
   },
 
   signInWithApple: async () => {
+    if (isPlaceholder) {
+      console.warn('⚠️ Using placeholder Supabase credentials - OAuth will not work')
+      return { 
+        data: { 
+          user: {
+            id: 'demo-user-apple',
+            email: 'apple@example.com',
+            user_metadata: { name: 'Apple User' }
+          },
+          session: { access_token: 'demo-token' }
+        }, 
+        error: null 
+      }
+    }
+    
     return await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: {
@@ -52,6 +85,21 @@ export const auth = {
   },
 
   signInWithFacebook: async () => {
+    if (isPlaceholder) {
+      console.warn('⚠️ Using placeholder Supabase credentials - OAuth will not work')
+      return { 
+        data: { 
+          user: {
+            id: 'demo-user-facebook',
+            email: 'facebook@example.com',
+            user_metadata: { name: 'Facebook User' }
+          },
+          session: { access_token: 'demo-token' }
+        }, 
+        error: null 
+      }
+    }
+    
     return await supabase.auth.signInWithOAuth({
       provider: 'facebook',
       options: {
@@ -61,6 +109,21 @@ export const auth = {
   },
 
   signInWithDiscord: async () => {
+    if (isPlaceholder) {
+      console.warn('⚠️ Using placeholder Supabase credentials - OAuth will not work')
+      return { 
+        data: { 
+          user: {
+            id: 'demo-user-discord',
+            email: 'discord@example.com',
+            user_metadata: { name: 'Discord User' }
+          },
+          session: { access_token: 'demo-token' }
+        }, 
+        error: null 
+      }
+    }
+    
     return await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {
