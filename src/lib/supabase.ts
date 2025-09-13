@@ -12,6 +12,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 // Auth helpers
 export const auth = {
   signUp: async (email: string, password: string, metadata?: any) => {
+    if (isPlaceholder) {
+      // Demo mode - simulate successful signup
+      return {
+        data: {
+          user: {
+            id: 'demo-user-signup',
+            email: email,
+            user_metadata: { name: metadata?.name || 'Demo User' }
+          },
+          session: { access_token: 'demo-token' }
+        },
+        error: null
+      }
+    }
+    
     return await supabase.auth.signUp({
       email,
       password,
@@ -22,6 +37,21 @@ export const auth = {
   },
 
   signIn: async (email: string, password: string) => {
+    if (isPlaceholder) {
+      // Demo mode - simulate successful signin
+      return {
+        data: {
+          user: {
+            id: 'demo-user-signin',
+            email: email,
+            user_metadata: { name: 'Demo User' }
+          },
+          session: { access_token: 'demo-token' }
+        },
+        error: null
+      }
+    }
+    
     return await supabase.auth.signInWithPassword({
       email,
       password
@@ -31,16 +61,18 @@ export const auth = {
   signInWithGoogle: async () => {
     console.log('🔍 Attempting Google sign-in...')
     
-    // Check if we're using placeholder credentials
     if (isPlaceholder) {
       console.warn('⚠️ Using placeholder Supabase credentials - OAuth will not work')
-      // Simulate successful login for demo purposes
+      console.log('✅ Demo Google login successful')
       return { 
         data: { 
           user: {
-            id: 'demo-user-id',
-            email: 'demo@example.com',
-            user_metadata: { name: 'Demo User' }
+            id: 'demo-user-google',
+            email: 'demo.user@gmail.com',
+            user_metadata: { 
+              name: 'Demo User',
+              avatar_url: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop'
+            }
           },
           session: { access_token: 'demo-token' }
         }, 
@@ -48,16 +80,21 @@ export const auth = {
       }
     }
     
-    return await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
+    try {
+      return await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
-      }
-    })
+      })
+    } catch (error) {
+      console.error('Google OAuth error:', error)
+      return { data: null, error: { message: 'Google sign-in failed. Please try again.' } }
+    }
   },
 
   signInWithApple: async () => {

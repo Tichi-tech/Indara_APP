@@ -33,8 +33,8 @@ export function useAuth() {
       setUser(session?.user ?? null)
       setLoading(false)
       
-      // Handle demo login
-      if (event === 'SIGNED_IN' && session?.user?.id?.includes('demo-user')) {
+      // Handle demo login - check for demo users
+      if (event === 'SIGNED_IN' && session?.user?.id?.startsWith('demo-user')) {
         console.log('✅ Demo login successful')
       }
     })
