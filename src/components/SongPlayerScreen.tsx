@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Play, Pause, SkipBack, SkipForward, Heart, Share2, MoreHorizontal, Volume2, Repeat, Shuffle, Globe, Lock } from 'lucide-react';
+import { ArrowLeft, Play, Pause, SkipBack, SkipForward, Heart, Share2, MoreHorizontal, Volume2, Repeat, Shuffle, ThumbsUp, ThumbsDown, ChevronDown } from 'lucide-react';
 
 interface Song {
   id: string;
@@ -26,12 +26,10 @@ interface SongPlayerScreenProps {
 const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onShareToHealing: _onShareToHealing }) => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, _setDuration] = useState(225); // 3:45 in seconds
+  const [duration, _setDuration] = useState(179); // 2:59 in seconds
   const [isLiked, setIsLiked] = useState(song.isLiked || false);
-  const [isShuffled, setIsShuffled] = useState(false);
-  const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
-  const [volume, setVolume] = useState(0.8);
-  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [isDisliked, setIsDisliked] = useState(false);
+  const [likes, setLikes] = useState(2100);
 
   // Simulate playback progress
   useEffect(() => {
@@ -60,7 +58,26 @@ const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onSha
   };
 
   const handleLike = () => {
-    setIsLiked(!isLiked);
+    if (isLiked) {
+      setIsLiked(false);
+      setLikes(prev => prev - 1);
+    } else {
+      setIsLiked(true);
+      setIsDisliked(false);
+      setLikes(prev => prev + 1);
+    }
+  };
+
+  const handleDislike = () => {
+    if (isDisliked) {
+      setIsDisliked(false);
+    } else {
+      setIsDisliked(true);
+      if (isLiked) {
+        setIsLiked(false);
+        setLikes(prev => prev - 1);
+      }
+    }
   };
 
   const handleShare = () => {
@@ -71,177 +88,169 @@ const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onSha
         url: window.location.href
       });
     } else {
-      // Fallback for browsers that don't support Web Share API
       navigator.clipboard.writeText(window.location.href);
       alert('Link copied to clipboard!');
     }
   };
 
-  const handleRepeat = () => {
-    const modes: ('off' | 'all' | 'one')[] = ['off', 'all', 'one'];
-    const currentIndex = modes.indexOf(repeatMode);
-    const nextIndex = (currentIndex + 1) % modes.length;
-    setRepeatMode(modes[nextIndex]);
-  };
-
   const progress = (currentTime / duration) * 100;
 
   return (
-    <div className="h-full bg-gradient-to-b from-purple-900 via-purple-800 to-black text-white flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 relative z-10">
-        <button onClick={onBack} className="p-2 -ml-2">
-          <ArrowLeft className="w-6 h-6 text-white" />
-        </button>
-        <div className="text-center">
-          <p className="text-sm text-purple-200">Playing from</p>
-          <p className="text-white font-medium">Your Library</p>
-        </div>
-        <button className="p-2 -mr-2">
-          <MoreHorizontal className="w-6 h-6 text-white" />
-        </button>
+    <div className="h-full relative overflow-hidden">
+      {/* Full Screen Background Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `url(${song.image})`,
+        }}
+      >
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/80"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
       </div>
 
-      {/* Album Art */}
-      <div className="flex-1 flex items-center justify-center px-8 py-8">
-        <div className="relative">
-          <img
-            src={song.image}
-            alt={song.title}
-            className="w-80 h-80 rounded-2xl shadow-2xl object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>
-        </div>
-      </div>
-
-      {/* Song Info */}
-      <div className="px-8 mb-6">
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold text-white truncate">{song.title}</h1>
-            <p className="text-purple-200 text-lg">{song.creator || 'You'}</p>
+      {/* Content Overlay */}
+      <div className="relative z-10 h-full flex flex-col text-white">
+        {/* Top Header */}
+        <div className="flex items-center justify-between p-4 pt-12">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold">{song.title}</h1>
+            <span className="bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded">
+              v{song.version}
+            </span>
           </div>
-          <button onClick={handleLike} className="p-2 -mr-2">
-            <Heart 
-              className={`w-6 h-6 ${isLiked ? 'fill-red-500 text-red-500' : 'text-white'}`} 
-            />
+          <button className="w-10 h-10 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <ChevronDown className="w-5 h-5" />
           </button>
         </div>
-        
-        <div className="flex items-center gap-4 text-sm text-purple-200">
-          <span>{song.plays} plays</span>
-          <span>{song.likes} likes</span>
-          <div className="flex items-center gap-1">
-            {song.isPublic ? (
-              <>
-                <Globe className="w-3 h-3" />
-                <span>Public</span>
-              </>
-            ) : (
-              <>
-                <Lock className="w-3 h-3" />
-                <span>Private</span>
-              </>
-            )}
+
+        {/* Artist Info */}
+        <div className="px-4 mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-gray-400 rounded-full overflow-hidden">
+              <div className="w-full h-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
+                <span className="text-white text-xs font-bold">
+                  {(song.creator || 'You').charAt(0).toUpperCase()}
+                </span>
+              </div>
+            </div>
+            <span className="text-white font-medium">{song.creator || 'You'}</span>
           </div>
         </div>
-      </div>
 
-      {/* Progress Bar */}
-      <div className="px-8 mb-6">
-        <input
-          type="range"
-          min="0"
-          max={duration}
-          value={currentTime}
-          onChange={handleSeek}
-          className="w-full h-1 bg-purple-700 rounded-lg appearance-none cursor-pointer slider"
-          style={{
-            background: `linear-gradient(to right, #ffffff 0%, #ffffff ${progress}%, #7c3aed ${progress}%, #7c3aed 100%)`
-          }}
-        />
-        <div className="flex justify-between text-xs text-purple-200 mt-2">
-          <span>{formatTime(currentTime)}</span>
-          <span>{formatTime(duration)}</span>
-        </div>
-      </div>
+        {/* Spacer to push content to bottom */}
+        <div className="flex-1"></div>
 
-      {/* Controls */}
-      <div className="px-8 pb-8">
-        <div className="flex items-center justify-between mb-6">
+        {/* Floating Action Buttons */}
+        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 space-y-4">
+          {/* Like Button */}
           <button 
-            onClick={() => setIsShuffled(!isShuffled)}
-            className={`p-2 ${isShuffled ? 'text-white' : 'text-purple-300'}`}
+            onClick={handleLike}
+            className="w-12 h-12 bg-black/30 backdrop-blur-sm rounded-full flex flex-col items-center justify-center"
           >
-            <Shuffle className="w-5 h-5" />
+            <ThumbsUp className={`w-5 h-5 ${isLiked ? 'text-blue-400 fill-blue-400' : 'text-white'}`} />
+            <span className="text-xs text-white mt-1">{(likes / 1000).toFixed(1)}K</span>
           </button>
-          
-          <div className="flex items-center gap-6">
-            <button className="p-2">
-              <SkipBack className="w-6 h-6 text-white" />
-            </button>
-            
-            <button
-              onClick={handlePlayPause}
-              className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg"
-            >
-              {isPlaying ? (
-                <Pause className="w-8 h-8 text-black" />
-              ) : (
-                <Play className="w-8 h-8 text-black ml-1" />
-              )}
-            </button>
-            
-            <button className="p-2">
-              <SkipForward className="w-6 h-6 text-white" />
-            </button>
-          </div>
-          
+
+          {/* Dislike Button */}
           <button 
-            onClick={handleRepeat}
-            className={`p-2 relative ${repeatMode !== 'off' ? 'text-white' : 'text-purple-300'}`}
+            onClick={handleDislike}
+            className="w-12 h-12 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center"
           >
-            <Repeat className="w-5 h-5" />
-            {repeatMode === 'one' && (
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-white text-black rounded-full text-xs flex items-center justify-center font-bold">
-                1
-              </span>
-            )}
+            <ThumbsDown className={`w-5 h-5 ${isDisliked ? 'text-red-400 fill-red-400' : 'text-white'}`} />
+          </button>
+
+          {/* Share Button */}
+          <button 
+            onClick={handleShare}
+            className="w-12 h-12 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center"
+          >
+            <Share2 className="w-5 h-5 text-white" />
+          </button>
+
+          {/* More Options */}
+          <button className="w-12 h-12 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <MoreHorizontal className="w-5 h-5 text-white" />
           </button>
         </div>
 
-        {/* Bottom Controls */}
-        <div className="flex items-center justify-between">
-          <div className="relative">
-            <button 
-              onClick={() => setShowVolumeSlider(!showVolumeSlider)}
-              className="p-2 text-purple-200"
-            >
-              <Volume2 className="w-5 h-5" />
-            </button>
-            {showVolumeSlider && (
-              <div className="absolute bottom-12 left-0 bg-purple-800 rounded-lg p-3">
+        {/* Bottom Content */}
+        <div className="p-4 pb-8">
+          {/* Song Title and Description */}
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-white mb-2 leading-tight">
+              {song.description || "Mama always said I could sing the blues"}
+            </h2>
+            <p className="text-white/70 text-sm">
+              {song.tags || "Hallelujah Better pray I don't lose"}
+            </p>
+          </div>
+
+          {/* Controls */}
+          <div className="space-y-4">
+            {/* Progress Bar */}
+            <div className="flex items-center gap-3">
+              <button className="p-2">
+                <Repeat className="w-5 h-5 text-white" />
+              </button>
+              
+              <button
+                onClick={handlePlayPause}
+                className="p-2"
+              >
+                {isPlaying ? (
+                  <Pause className="w-6 h-6 text-white" />
+                ) : (
+                  <Play className="w-6 h-6 text-white" />
+                )}
+              </button>
+
+              {/* Progress Bar */}
+              <div className="flex-1">
                 <input
                   type="range"
                   min="0"
-                  max="1"
-                  step="0.1"
-                  value={volume}
-                  onChange={(e) => setVolume(parseFloat(e.target.value))}
-                  className="w-20 h-1 bg-purple-600 rounded-lg appearance-none cursor-pointer"
+                  max={duration}
+                  value={currentTime}
+                  onChange={handleSeek}
+                  className="w-full h-1 bg-white/30 rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, #ffffff 0%, #ffffff ${progress}%, rgba(255,255,255,0.3) ${progress}%, rgba(255,255,255,0.3) 100%)`
+                  }}
                 />
               </div>
-            )}
+
+              <span className="text-white text-sm font-medium min-w-[40px]">
+                {formatTime(currentTime)}
+              </span>
+            </div>
           </div>
-          
-          <button 
-            onClick={handleShare}
-            className="p-2 text-purple-200"
-          >
-            <Share2 className="w-5 h-5" />
-          </button>
+        </div>
+
+        {/* Bottom App Info */}
+        <div className="px-4 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-orange-500 rounded flex items-center justify-center">
+                <span className="text-white text-xs font-bold">I</span>
+              </div>
+              <span className="text-white text-sm font-medium">Indara</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-white/70 text-sm">curated by</span>
+              <span className="text-white text-sm font-bold">Indara AI</span>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Back Button - Positioned absolutely */}
+      <button 
+        onClick={onBack}
+        className="absolute top-12 left-4 z-20 w-10 h-10 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center"
+      >
+        <ArrowLeft className="w-5 h-5 text-white" />
+      </button>
     </div>
   );
 };
