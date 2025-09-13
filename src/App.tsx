@@ -243,6 +243,7 @@ function App() {
               } else {
                 setCurrentScreen('nameEntry');
               }
+            }}
             mode={isSignInFlow ? 'signin' : 'create'}
           />
         );
@@ -324,8 +325,7 @@ function App() {
               setUserName(name);
               setUserHandle(handle);
               setPhoneNumber(phone);
-            }
-            }
+            }}
           />
         );
       case 'notifications':
