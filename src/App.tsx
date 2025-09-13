@@ -5,7 +5,7 @@ import { useSongs } from './hooks/useSongs';
 import WelcomeScreen from './components/WelcomeScreen';
 import SignInScreen from './components/SignInScreen';
 import CreateAccountScreen from './components/CreateAccountScreen';
-import PhoneNumberScreen from './components/PhoneNumberScreen';
+import PhoneAuthScreen from './components/PhoneAuthScreen';
 import VerificationScreen from './components/VerificationScreen';
 import NameEntryScreen from './components/NameEntryScreen';
 import OnboardingCompleteScreen from './components/OnboardingCompleteScreen';
@@ -227,11 +227,10 @@ function App() {
         );
       case 'phoneNumber':
         return (
-          <PhoneNumberScreen 
+          <PhoneAuthScreen 
             onBack={() => setCurrentScreen(isSignInFlow ? 'signin' : 'createAccount')}
             onNext={() => setCurrentScreen('verification')}
-            onPhoneChange={setPhoneNumber}
-            isSignIn={isSignInFlow}
+            mode={isSignInFlow ? 'signin' : 'signup'}
           />
         );
       case 'verification':
