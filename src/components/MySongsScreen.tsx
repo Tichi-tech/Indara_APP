@@ -30,7 +30,7 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
   onAccountSettings,
   userSongs,
   onPlaySong,
-  userName
+  userName: _userName
 }) => {
   return (
     <div className="h-full bg-white flex flex-col">

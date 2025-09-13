@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Search, Settings } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 
 interface Song {
   id: string;
@@ -32,7 +32,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   onMySongs,
   onAccountSettings,
   userName,
-  userHandle,
+  userHandle: _userHandle,
   songs,
   onPlaySong
 }) => {

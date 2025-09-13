@@ -23,10 +23,10 @@ interface SongPlayerScreenProps {
   onShareToHealing?: (song: Song) => void;
 }
 
-const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onShareToHealing }) => {
+const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onShareToHealing: _onShareToHealing }) => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(225); // 3:45 in seconds
+  const [duration, _setDuration] = useState(225); // 3:45 in seconds
   const [isLiked, setIsLiked] = useState(song.isLiked || false);
   const [isShuffled, setIsShuffled] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');

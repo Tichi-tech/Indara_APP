@@ -54,13 +54,13 @@ export interface Song {
 
 function App() {
   const { user, loading: authLoading, signOut } = useAuth();
-  const { songs, publicSongs, createSong: createSongInDB } = useSongs();
+  const { songs, publicSongs, createSong: createSongInDB, setSongs } = useSongs();
   
   // All state declarations must come before useEffect hooks
   const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [initialScreen, setInitialScreen] = useState<Screen>('welcome');
+  // const [initialScreen, setInitialScreen] = useState<Screen>('welcome');
   const [userName, setUserName] = useState('Sam lee');
   const [userHandle, setUserHandle] = useState('samleeee');
   const [phoneNumber, setPhoneNumber] = useState('+1 650-213-7379');
@@ -231,15 +231,14 @@ function App() {
         );
       case 'phoneNumber':
         return (
-          <PhoneAuthScreen 
+          <PhoneAuthScreen
             onBack={() => setCurrentScreen(isSignInFlow ? 'signin' : 'createAccount')}
-            onNext={() => setCurrentScreen('verification')}
-            mode={isSignInFlow ? 'signin' : 'signup'}
+            mode={isSignInFlow ? 'signin' : 'create'}
           />
         );
       case 'verification':
         return (
-          <VerificationScreen 
+          <VerificationScreen
             onBack={() => setCurrentScreen('phoneNumber')}
             onNext={() => {
               if (isSignInFlow) {
@@ -248,7 +247,8 @@ function App() {
                 setCurrentScreen('nameEntry');
               }
             }}
-            mode={isSignInFlow ? 'signin' : 'create'}
+            phoneNumber={phoneNumber}
+            isSignIn={isSignInFlow}
           />
         );
       case 'nameEntry':

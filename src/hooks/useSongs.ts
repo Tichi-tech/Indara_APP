@@ -221,6 +221,7 @@ export function useSongs() {
     loading,
     error,
     createSong,
+    setSongs,
     refetch: () => {
       fetchUserSongs()
       fetchPublicSongs()

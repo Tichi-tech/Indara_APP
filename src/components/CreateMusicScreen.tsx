@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Wand2, Music, Clock, Globe, Lock } from 'lucide-react';
+import { ArrowLeft, Wand2, Music, Globe, Lock } from 'lucide-react';
 
 interface CreateMusicScreenProps {
   onBack: () => void;
