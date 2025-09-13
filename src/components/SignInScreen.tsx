@@ -12,19 +12,23 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ onBack, onNext }) => {
     console.log('🚀 Google sign-in button clicked')
     try {
       const { data, error } = await auth.signInWithGoogle();
+      console.log('Google sign-in response:', { data, error })
+      
       if (error) {
         console.error('❌ Google sign-in error:', error);
-        alert(`Google sign-in failed: ${error.message}`);
-      } else {
-        console.log('✅ Google sign-in initiated successfully')
-        // For demo mode, the auth state change will handle navigation
-        if (data?.user?.id?.startsWith('demo-user')) {
-          console.log('Demo user logged in, navigation will happen via auth state change')
+        // Show user-friendly error message
+        if (error.message.includes('popup')) {
+          alert('Please allow popups for this site and try again.');
+        } else {
+          alert(`Google sign-in failed: ${error.message}`);
         }
+      } else {
+        console.log('✅ Google sign-in initiated successfully', data)
+        // OAuth redirect will handle the rest
       }
     } catch (error) {
       console.error('❌ Google sign-in catch error:', error);
-      alert(`Google sign-in failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Unexpected error during Google sign-in: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 

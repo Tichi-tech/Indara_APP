@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mtypyrdsboxrgzsxwsk.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key'
-const isPlaceholder = supabaseAnonKey.includes('placeholder') || supabaseUrl.includes('placeholder') || supabaseAnonKey === 'placeholder-anon-key'
+const isPlaceholder = supabaseAnonKey.includes('placeholder') || supabaseAnonKey === 'placeholder-anon-key'
 
 // Note: You should set these in your .env file for security
 console.log('🔗 Connecting to Supabase:', supabaseUrl)
@@ -61,26 +61,8 @@ export const auth = {
   signInWithGoogle: async () => {
     console.log('🔍 Attempting Google sign-in...')
     
-    if (isPlaceholder) {
-      console.warn('⚠️ Using placeholder Supabase credentials - OAuth will not work')
-      console.log('✅ Demo Google login successful')
-      return { 
-        data: { 
-          user: {
-            id: 'demo-user-google',
-            email: 'demo.user@gmail.com',
-            user_metadata: { 
-              name: 'Demo User',
-              avatar_url: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop'
-            }
-          },
-          session: { access_token: 'demo-token' }
-        }, 
-        error: null 
-      }
-    }
-    
     try {
+      console.log('🚀 Starting Google OAuth flow...')
       return await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -88,12 +70,18 @@ export const auth = {
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
-          }
+          },
+          skipBrowserRedirect: false
         }
       })
     } catch (error) {
       console.error('Google OAuth error:', error)
-      return { data: null, error: { message: 'Google sign-in failed. Please try again.' } }
+      return { 
+        data: null, 
+        error: { 
+          message: `Google sign-in failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        } 
+      }
     }
   },
 
