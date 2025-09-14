@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Pause, Play, SkipForward } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useSongs } from './hooks/useSongs';
+
 import WelcomeScreen from './components/WelcomeScreen';
 import SignInScreen from './components/SignInScreen';
 import CreateAccountScreen from './components/CreateAccountScreen';
@@ -19,17 +20,17 @@ import NotificationsScreen from './components/NotificationsScreen';
 import UserProfileScreen from './components/UserProfileScreen';
 import StatusBar from './components/StatusBar';
 
-type Screen = 
-  | 'welcome' 
-  | 'signin' 
-  | 'createAccount' 
-  | 'phoneNumber' 
-  | 'verification' 
-  | 'nameEntry' 
-  | 'onboardingComplete' 
-  | 'home' 
-  | 'createMusic' 
-  | 'mySongs' 
+type Screen =
+  | 'welcome'
+  | 'signin'
+  | 'createAccount'
+  | 'phoneNumber'
+  | 'verification'
+  | 'nameEntry'
+  | 'onboardingComplete'
+  | 'home'
+  | 'createMusic'
+  | 'mySongs'
   | 'songPlayer'
   | 'accountSettings'
   | 'profile'
@@ -52,15 +53,34 @@ export interface Song {
   duration?: string;
 }
 
+const AUTH_SCREENS = new Set<Screen>([
+  'welcome',
+  'signin',
+  'createAccount',
+  'phoneNumber',
+  'verification',
+  'nameEntry',
+  'onboardingComplete',
+]);
+
+const PROTECTED_SCREENS = new Set<Screen>([
+  'home',
+  'createMusic',
+  'mySongs',
+  'songPlayer',
+  'accountSettings',
+  'profile',
+  'notifications',
+  'userProfile',
+]);
+
 function App() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { songs, publicSongs, setSongs } = useSongs();
-  
-  // All state declarations must come before useEffect hooks
+
   const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  // const [initialScreen, setInitialScreen] = useState<Screen>('welcome');
   const [userName, setUserName] = useState('Sam lee');
   const [userHandle, setUserHandle] = useState('samleeee');
   const [phoneNumber, setPhoneNumber] = useState('+1 650-213-7379');
@@ -70,45 +90,51 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
 
+  // App bootstrap + error boundary
   useEffect(() => {
-    // Simulate app initialization
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+    const timer = setTimeout(() => setIsLoading(false), 800);
 
-    // Error boundary simulation
     const handleError = (error: ErrorEvent) => {
       console.error('App error:', error);
       setHasError(true);
     };
-
     window.addEventListener('error', handleError);
-    
+
     return () => {
       clearTimeout(timer);
       window.removeEventListener('error', handleError);
     };
   }, []);
 
-  // Handle authentication state changes
+  // Handle authentication → route transitions (run only when a transition is needed)
   useEffect(() => {
-    console.log('🏠 APP: Auth state changed - loading:', authLoading, 'user:', user ? `${user.email}` : 'none')
-    if (!authLoading) {
-      if (user) {
-        // User is authenticated, go to home
-        console.log('🏠 APP: User authenticated, navigating to home')
+    console.log(
+      '🏠 APP: Auth state changed - loading:',
+      authLoading,
+      'user:',
+      user ? user.email : 'none',
+      'screen:',
+      currentScreen
+    );
+
+    if (authLoading) return;
+
+    if (user) {
+      // If authenticated but on an auth screen, go home once
+      if (AUTH_SCREENS.has(currentScreen)) {
+        console.log('🏠 APP: User authenticated, navigating to home (once)');
         setCurrentScreen('home');
-      } else {
-        // User is not authenticated, go to welcome
-        console.log('🏠 APP: User not authenticated, checking current screen:', currentScreen)
-        if (['home', 'createMusic', 'mySongs', 'songPlayer', 'accountSettings', 'profile', 'notifications', 'userProfile'].includes(currentScreen)) {
-          console.log('🏠 APP: Redirecting to welcome screen')
-          setCurrentScreen('welcome');
-        }
+      }
+    } else {
+      // If not authenticated but on a protected screen, go to welcome once
+      if (PROTECTED_SCREENS.has(currentScreen)) {
+        console.log('🏠 APP: No user, redirecting to welcome (once)');
+        setCurrentScreen('welcome');
       }
     }
-  }, [user, authLoading, currentScreen]);
+  }, [authLoading, user, currentScreen]);
 
+  // --- Player handlers ---
   const handlePlaySong = (song: Song) => {
     setCurrentlyPlaying(song);
     setCurrentSong(song);
@@ -122,7 +148,6 @@ function App() {
     setCurrentScreen('home');
   };
 
-
   const handleLogout = () => {
     signOut();
     setCurrentScreen('welcome');
@@ -131,7 +156,7 @@ function App() {
     setIsPlayerMinimized(false);
   };
 
-  // Loading state
+  // --- Loading & Error ---
   if (isLoading || authLoading) {
     return (
       <div className="mobile-container">
@@ -146,7 +171,6 @@ function App() {
     );
   }
 
-  // Error state
   if (hasError) {
     return (
       <div className="mobile-container">
@@ -157,7 +181,7 @@ function App() {
             </div>
             <h2 className="text-xl font-medium text-black mb-2">Something went wrong</h2>
             <p className="text-gray-600 mb-4">We're having trouble loading the app.</p>
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="bg-black text-white px-6 py-2 rounded-full font-medium"
             >
@@ -169,30 +193,19 @@ function App() {
     );
   }
 
+  // --- Screen renderer (NO setState calls here) ---
   const renderScreen = () => {
-    // If user is authenticated and still on auth screens, redirect to home
-    if (user && ['welcome', 'signin', 'createAccount', 'phoneNumber', 'verification', 'nameEntry', 'onboardingComplete'].includes(currentScreen)) {
-      setCurrentScreen('home');
-      return null;
-    }
-
-    // If user is not authenticated and not on auth screens, show welcome
-    if (!user && !['welcome', 'signin', 'createAccount', 'phoneNumber', 'verification', 'nameEntry', 'onboardingComplete'].includes(currentScreen)) {
-      setCurrentScreen('welcome');
-      return null;
-    }
-
     switch (currentScreen) {
       case 'welcome':
         return (
-          <WelcomeScreen 
+          <WelcomeScreen
             onCreateAccount={() => setCurrentScreen('createAccount')}
             onSignIn={() => setCurrentScreen('signin')}
           />
         );
       case 'signin':
         return (
-          <SignInScreen 
+          <SignInScreen
             onBack={() => setCurrentScreen('welcome')}
             onNext={() => {
               setIsSignInFlow(true);
@@ -202,7 +215,7 @@ function App() {
         );
       case 'createAccount':
         return (
-          <CreateAccountScreen 
+          <CreateAccountScreen
             onBack={() => setCurrentScreen('welcome')}
             onNext={() => {
               setIsSignInFlow(false);
@@ -234,7 +247,7 @@ function App() {
         );
       case 'nameEntry':
         return (
-          <NameEntryScreen 
+          <NameEntryScreen
             onBack={() => setCurrentScreen('verification')}
             onNext={() => setCurrentScreen('onboardingComplete')}
             onNameChange={setUserName}
@@ -242,7 +255,7 @@ function App() {
         );
       case 'onboardingComplete':
         return (
-          <OnboardingCompleteScreen 
+          <OnboardingCompleteScreen
             onNext={() => setCurrentScreen('home')}
             name={userName}
           />
@@ -280,18 +293,17 @@ function App() {
         );
       case 'songPlayer':
         return (
-          <SongPlayerScreen 
+          <SongPlayerScreen
             onBack={handleMinimizePlayer}
             song={currentSong!}
             onShareToHealing={(sharedSong) => {
-              // Update the song in the songs array to mark it as public
-              setSongs(prev => prev.map(s => s.id === sharedSong.id ? sharedSong : s));
+              setSongs((prev) => prev.map((s) => (s.id === sharedSong.id ? sharedSong : s)));
             }}
           />
         );
       case 'accountSettings':
         return (
-          <AccountSettingsScreen 
+          <AccountSettingsScreen
             onBack={() => setCurrentScreen('home')}
             userName={userName}
             userHandle={userHandle}
@@ -303,7 +315,7 @@ function App() {
         );
       case 'profile':
         return (
-          <ProfileScreen 
+          <ProfileScreen
             onBack={() => setCurrentScreen('accountSettings')}
             userName={userName}
             userHandle={userHandle}
@@ -316,22 +328,18 @@ function App() {
           />
         );
       case 'notifications':
-        return (
-          <NotificationsScreen 
-            onBack={() => setCurrentScreen('accountSettings')}
-          />
-        );
+        return <NotificationsScreen onBack={() => setCurrentScreen('accountSettings')} />;
       case 'userProfile':
         return (
-          <UserProfileScreen 
-            onBack={() => setCurrentScreen('accountSettings')}
-            userName={userName}
-            userHandle={userHandle}
-          />
+        <UserProfileScreen
+          onBack={() => setCurrentScreen('accountSettings')}
+          userName={userName}
+          userHandle={userHandle}
+        />
         );
       default:
         return (
-          <WelcomeScreen 
+          <WelcomeScreen
             onSignIn={() => setCurrentScreen('signin')}
             onCreateAccount={() => setCurrentScreen('createAccount')}
           />
@@ -344,12 +352,12 @@ function App() {
       <StatusBar />
       <div className="h-full overflow-hidden">
         {renderScreen()}
-        
+
         {/* Mini Player - Always on top when music is playing and minimized */}
         {currentlyPlaying && isPlayerMinimized && (
           <div className="fixed bottom-16 left-0 right-0 bg-white shadow-lg border-t z-40 mx-auto max-w-[375px]">
             <div className="flex items-center gap-3 p-3">
-              <img 
+              <img
                 src={currentlyPlaying.image}
                 alt={currentlyPlaying.title}
                 className="w-12 h-12 rounded-lg object-cover"
@@ -358,12 +366,10 @@ function App() {
                 <h4 className="font-medium text-black text-sm truncate">
                   {currentlyPlaying.title}
                 </h4>
-                <p className="text-gray-600 text-xs truncate">
-                  {currentlyPlaying.creator}
-                </p>
+                <p className="text-gray-600 text-xs truncate">{currentlyPlaying.creator}</p>
               </div>
               <div className="flex items-center gap-2">
-                <button 
+                <button
                   onClick={() => setIsPlaying(!isPlaying)}
                   className="w-10 h-10 bg-black rounded-full flex items-center justify-center"
                 >
@@ -373,7 +379,7 @@ function App() {
                     <Play className="w-5 h-5 text-white ml-0.5" />
                   )}
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setCurrentSong(currentlyPlaying);
                     setIsPlayerMinimized(false);
@@ -385,7 +391,7 @@ function App() {
                 </button>
               </div>
             </div>
-            
+
             {/* Mini Progress Bar */}
             <div className="px-3 pb-2">
               <div className="w-full bg-gray-200 rounded-full h-1">
@@ -394,13 +400,12 @@ function App() {
             </div>
           </div>
         )}
-        
-        {/* Bottom Navigation Bar */}
+
         {/* Bottom Navigation Bar - Only show after onboarding */}
-        {['home', 'mySongs', 'createMusic', 'songPlayer', 'accountSettings', 'profile', 'notifications', 'userProfile'].includes(currentScreen) && (
+        {PROTECTED_SCREENS.has(currentScreen) && (
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 mx-auto max-w-[375px]">
             <div className="flex items-center justify-around py-2">
-              <button 
+              <button
                 onClick={() => setCurrentScreen('home')}
                 className={`flex flex-col items-center gap-1 p-3 ${
                   currentScreen === 'home' ? 'text-black' : 'text-gray-400'
@@ -408,13 +413,13 @@ function App() {
               >
                 <div className="w-6 h-6 flex items-center justify-center">
                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
                   </svg>
                 </div>
                 <span className="text-xs font-medium">Home</span>
               </button>
-              
-              <button 
+
+              <button
                 onClick={() => setCurrentScreen('mySongs')}
                 className={`flex flex-col items-center gap-1 p-3 ${
                   currentScreen === 'mySongs' ? 'text-black' : 'text-gray-400'
@@ -422,24 +427,21 @@ function App() {
               >
                 <div className="w-6 h-6 flex items-center justify-center">
                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                    <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/>
+                    <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z" />
                   </svg>
                 </div>
                 <span className="text-xs font-medium">Library</span>
               </button>
-              
-              <button 
-                onClick={() => setCurrentScreen('createMusic')}
-                className="relative"
-              >
+
+              <button onClick={() => setCurrentScreen('createMusic')} className="relative">
                 <div className="w-14 h-14 bg-gradient-to-r from-orange-400 via-pink-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
                   <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6">
-                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
                   </svg>
                 </div>
               </button>
-              
-              <button 
+
+              <button
                 onClick={() => setCurrentScreen('notifications')}
                 className={`flex flex-col items-center gap-1 p-3 ${
                   currentScreen === 'notifications' ? 'text-black' : 'text-gray-400'
@@ -447,14 +449,14 @@ function App() {
               >
                 <div className="w-6 h-6 flex items-center justify-center relative">
                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+                    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
                   </svg>
                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
                 </div>
                 <span className="text-xs font-medium">Inbox</span>
               </button>
-              
-              <button 
+
+              <button
                 onClick={() => setCurrentScreen('accountSettings')}
                 className={`flex flex-col items-center gap-1 p-3 ${
                   currentScreen === 'accountSettings' ? 'text-black' : 'text-gray-400'
