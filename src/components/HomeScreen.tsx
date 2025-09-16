@@ -303,7 +303,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             <div className="space-y-4">
               {featuredPlaylists.map((playlist) => (
                 <article key={playlist.id} className="bg-white p-4 rounded-2xl shadow-sm w-full">
-                  {/* IMPORTANT: middle track uses minmax(0,1fr) so it can grow AND shrink properly */}
+                  {/* middle track uses minmax(0,1fr) so it can grow AND shrink */}
                   <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4">
                     {/* Thumb */}
                     <img
@@ -313,7 +313,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                       className="w-16 h-16 rounded-xl object-cover"
                     />
 
-                    {/* Content — must be allowed to take space */}
+                    {/* Content */}
                     <div className="min-w-0 w-full">
                       <h3 className="font-bold text-black text-lg mb-1 line-clamp-1">
                         {playlist.title}
@@ -323,7 +323,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                       </p>
                     </div>
 
-                    {/* Stats — don't let this shrink the center */}
+                    {/* Stats (don’t shrink center) */}
                     <div className="flex items-center gap-4 justify-self-end whitespace-nowrap text-sm text-gray-700 shrink-0">
                       <span className="inline-flex items-center gap-1">
                         <Play className="w-4 h-4" aria-hidden="true" />
