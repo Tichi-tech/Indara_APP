@@ -231,23 +231,23 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto pb-[120px] [padding-bottom:calc(env(safe-area-inset-bottom)+120px)] snap-y snap-mandatory">
+        <main className="flex-1 overflow-y-auto pb-[120px] [padding-bottom:calc(env(safe-area-inset-bottom)+120px)]">
           {/* Healing Community */}
-          <section className="mb-8 snap-start">
+          <section className="mb-8">
             <div className="flex items-center justify-between px-6 mb-4">
               <h2 className="text-2xl font-bold text-black">Healing Community</h2>
               <button className="text-gray-600 font-medium flex items-center gap-1">
                 More
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
             </div>
 
-            <div className="overflow-x-auto no-scrollbar px-6 snap-x snap-mandatory">
+            <div className="overflow-x-auto no-scrollbar px-6">
               <div className="flex gap-4 w-max">
                 {healingTracks.map((track) => (
-                  <article key={track.id} className="flex-shrink-0 w-48 snap-start">
+                  <article key={track.id} className="flex-shrink-0 w-48">
                     <div className="grid grid-rows-[128px_auto] rounded-2xl overflow-hidden">
                       {/* Image */}
                       <div className="relative h-32">
@@ -262,7 +262,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                           aria-label={`Play ${track.title}`}
                           className="absolute bottom-3 left-3 w-10 h-10 bg-gray-700/80 rounded-full flex items-center justify-center backdrop-blur-sm"
                         >
-                          <Play className="w-5 h-5 text-white fill-white ml-0.5" />
+                          <Play className="w-5 h-5 text-white fill-white ml-0.5" aria-hidden="true" />
                         </button>
                       </div>
 
@@ -274,16 +274,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                         </p>
                         <div className="flex items-center justify-between mt-1">
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-6 h-6 bg-gray-300 rounded-full shrink-0" />
+                            <div className="w-6 h-6 bg-gray-300 rounded-full shrink-0" aria-hidden="true" />
                             <span className="text-gray-500 text-xs truncate">@{track.creator}</span>
                           </div>
                           <div className="flex items-center gap-3 text-xs text-gray-500 shrink-0">
                             <span className="flex items-center gap-1">
-                              <Play className="w-3 h-3" />
+                              <Play className="w-3 h-3" aria-hidden="true" />
                               {track.plays}
                             </span>
                             <span className="flex items-center gap-1">
-                              <Heart className="w-3 h-3" />
+                              <Heart className="w-3 h-3" aria-hidden="true" />
                               {track.likes}
                             </span>
                           </div>
@@ -296,13 +296,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
           </section>
 
-          {/* Featured Playlists */}
-          <section className="px-6 snap-start">
+          {/* Featured Playlists (fixed layout) */}
+          <section className="px-6">
             <h2 className="text-2xl font-bold text-black mb-6">Featured Playlists</h2>
+
             <div className="space-y-4">
               {featuredPlaylists.map((playlist) => (
                 <article key={playlist.id} className="bg-white p-4 rounded-2xl shadow-sm w-full">
-                  <div className="grid grid-cols-[64px_1fr_auto] items-center gap-4">
+                  {/* IMPORTANT: middle track uses minmax(0,1fr) so it can grow AND shrink properly */}
+                  <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4">
                     {/* Thumb */}
                     <img
                       src={playlist.image}
@@ -311,9 +313,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                       className="w-16 h-16 rounded-xl object-cover"
                     />
 
-                    {/* Content */}
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-black text-lg mb-1 truncate sm:line-clamp-1">
+                    {/* Content — must be allowed to take space */}
+                    <div className="min-w-0 w-full">
+                      <h3 className="font-bold text-black text-lg mb-1 line-clamp-1">
                         {playlist.title}
                       </h3>
                       <p className="text-gray-600 text-sm leading-snug line-clamp-2">
@@ -321,14 +323,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                       </p>
                     </div>
 
-                    {/* Stats */}
-                    <div className="flex items-center gap-4 justify-self-end whitespace-nowrap text-sm text-gray-700">
+                    {/* Stats — don't let this shrink the center */}
+                    <div className="flex items-center gap-4 justify-self-end whitespace-nowrap text-sm text-gray-700 shrink-0">
                       <span className="inline-flex items-center gap-1">
-                        <Play className="w-4 h-4" />
+                        <Play className="w-4 h-4" aria-hidden="true" />
                         {playlist.plays.toLocaleString()}
                       </span>
                       <span className="inline-flex items-center gap-1">
-                        <Heart className="w-4 h-4" />
+                        <Heart className="w-4 h-4" aria-hidden="true" />
                         {playlist.likes.toLocaleString()}
                       </span>
                     </div>
@@ -344,12 +346,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           <div className="px-4 py-3">
             <div className="flex items-center justify-around">
               {/* Home */}
-              <button className="flex flex-col items-center gap-1 py-1">
+              <button className="flex flex-col items-center gap-1 py-1" aria-label="Home">
                 <span className="w-6 h-6 text-black">🏠</span>
                 <span className="text-xs font-medium text-black">Home</span>
               </button>
               {/* Library */}
-              <button onClick={onMySongs} className="flex flex-col items-center gap-1 py-1">
+              <button onClick={onMySongs} className="flex flex-col items-center gap-1 py-1" aria-label="Library">
                 <span className="w-6 h-6 text-gray-400">📚</span>
                 <span className="text-xs font-medium text-gray-400">Library</span>
               </button>
@@ -357,17 +359,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
               <button
                 onClick={onCreateMusic}
                 className="w-12 h-12 bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-200 -mt-1"
+                aria-label="Create music"
               >
                 <span className="text-white text-xl">＋</span>
               </button>
               {/* Inbox */}
-              <button className="flex flex-col items-center gap-1 py-1 relative">
+              <button className="flex flex-col items-center gap-1 py-1 relative" aria-label="Inbox">
                 <span className="w-6 h-6 text-gray-400">🔔</span>
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" aria-hidden="true" />
                 <span className="text-xs font-medium text-gray-400">Inbox</span>
               </button>
               {/* Account */}
-              <button onClick={onAccountSettings} className="flex flex-col items-center gap-1 py-1">
+              <button onClick={onAccountSettings} className="flex flex-col items-center gap-1 py-1" aria-label="Account">
                 <div className="w-6 h-6 bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-bold">S</span>
                 </div>
