@@ -297,43 +297,30 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
           </section>
 
-          {/* Featured Playlists — correct layout */}
+          {/* Featured Playlists (fixed layout) */}
           <section className="px-6">
             <h2 className="text-2xl font-bold text-black mb-6">Featured Playlists</h2>
 
             <div className="space-y-4">
               {featuredPlaylists.map((playlist) => (
                 <article key={playlist.id} className="bg-white p-4 rounded-2xl shadow-sm w-full">
-                  {/* Layout: [thumb | text (expand/shrink) | stats (no shrink)] */}
-                  <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4">
-                    {/* Thumb */}
+                  <div className="flex items-center gap-4">
+                    {/* Small Image */}
                     <img
                       src={playlist.image}
                       alt={playlist.title}
                       loading="lazy"
-                      className="w-16 h-16 rounded-xl object-cover"
+                      className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
                     />
 
-                    {/* Text */}
-                    <div className="min-w-0 w-full">
+                    {/* Content - takes most of the space */}
+                    <div className="flex-1 min-w-0 pr-2">
                       <h3 className="font-bold text-black text-lg mb-1 line-clamp-1">
                         {playlist.title}
                       </h3>
-                      <p className="text-gray-600 text-sm leading-snug line-clamp-2">
+                      <p className="text-gray-600 text-sm leading-relaxed">
                         {playlist.description}
                       </p>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="flex items-center gap-4 justify-self-end whitespace-nowrap text-sm text-gray-700 shrink-0">
-                      <span className="inline-flex items-center gap-1" aria-label={`${playlist.plays} plays`}>
-                        <Play className="w-4 h-4" aria-hidden="true" />
-                        {playlist.plays.toLocaleString()}
-                      </span>
-                      <span className="inline-flex items-center gap-1" aria-label={`${playlist.likes} likes`}>
-                        <Heart className="w-4 h-4" aria-hidden="true" />
-                        {playlist.likes.toLocaleString()}
-                      </span>
                     </div>
                   </div>
                 </article>
