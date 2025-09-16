@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Play, Heart } from 'lucide-react';
+import BottomNav from './BottomNav';
 
 interface Song {
   id: string;
@@ -303,36 +304,23 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             <div className="space-y-4">
               {featuredPlaylists.map((playlist) => (
                 <article key={playlist.id} className="bg-white p-4 rounded-2xl shadow-sm w-full">
-                  {/* middle track uses minmax(0,1fr) so it can grow AND shrink */}
-                  <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4">
-                    {/* Thumb */}
+                  <div className="flex items-center gap-4">
+                    {/* Small Image */}
                     <img
                       src={playlist.image}
                       alt={playlist.title}
                       loading="lazy"
-                      className="w-16 h-16 rounded-xl object-cover"
+                      className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
                     />
 
-                    {/* Content */}
-                    <div className="min-w-0 w-full">
+                    {/* Content - takes most of the space */}
+                    <div className="flex-1 min-w-0 pr-2">
                       <h3 className="font-bold text-black text-lg mb-1 line-clamp-1">
                         {playlist.title}
                       </h3>
-                      <p className="text-gray-600 text-sm leading-snug line-clamp-2">
+                      <p className="text-gray-600 text-sm leading-relaxed">
                         {playlist.description}
                       </p>
-                    </div>
-
-                    {/* Stats (don’t shrink center) */}
-                    <div className="flex items-center gap-4 justify-self-end whitespace-nowrap text-sm text-gray-700 shrink-0">
-                      <span className="inline-flex items-center gap-1">
-                        <Play className="w-4 h-4" aria-hidden="true" />
-                        {playlist.plays.toLocaleString()}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Heart className="w-4 h-4" aria-hidden="true" />
-                        {playlist.likes.toLocaleString()}
-                      </span>
                     </div>
                   </div>
                 </article>
@@ -341,44 +329,17 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           </section>
         </main>
 
-        {/* Bottom Nav */}
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] bg-white border-t border-gray-100 [padding-bottom:env(safe-area-inset-bottom)]">
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-around">
-              {/* Home */}
-              <button className="flex flex-col items-center gap-1 py-1" aria-label="Home">
-                <span className="w-6 h-6 text-black">🏠</span>
-                <span className="text-xs font-medium text-black">Home</span>
-              </button>
-              {/* Library */}
-              <button onClick={onMySongs} className="flex flex-col items-center gap-1 py-1" aria-label="Library">
-                <span className="w-6 h-6 text-gray-400">📚</span>
-                <span className="text-xs font-medium text-gray-400">Library</span>
-              </button>
-              {/* Create */}
-              <button
-                onClick={onCreateMusic}
-                className="w-12 h-12 bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-200 -mt-1"
-                aria-label="Create music"
-              >
-                <span className="text-white text-xl">＋</span>
-              </button>
-              {/* Inbox */}
-              <button className="flex flex-col items-center gap-1 py-1 relative" aria-label="Inbox">
-                <span className="w-6 h-6 text-gray-400">🔔</span>
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" aria-hidden="true" />
-                <span className="text-xs font-medium text-gray-400">Inbox</span>
-              </button>
-              {/* Account */}
-              <button onClick={onAccountSettings} className="flex flex-col items-center gap-1 py-1" aria-label="Account">
-                <div className="w-6 h-6 bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">S</span>
-                </div>
-                <span className="text-xs font-medium text-gray-400">Account</span>
-              </button>
-            </div>
-          </div>
-        </nav>
+        {/* Bottom Navigation */}
+        <BottomNav
+          active="home"
+          onHome={() => {}}
+          onLibrary={onMySongs}
+          onCreate={onCreateMusic}
+          onInbox={() => {}}
+          onAccount={onAccountSettings}
+          badgeCount={1}
+          accountInitial="S"
+        />
       </div>
     </div>
   );
