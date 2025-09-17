@@ -294,6 +294,10 @@ function App() {
               console.log('🧘 Meditation Playlist clicked');
               setCurrentScreen('meditationPlaylist');
             }}
+            onInbox={() => {
+              console.log('📥 Inbox clicked');
+              setCurrentScreen('notifications');
+            }}
           />
         );
       case 'createMusic':
@@ -351,7 +355,7 @@ function App() {
           />
         );
       case 'notifications':
-        return <NotificationsScreen onBack={() => setCurrentScreen('accountSettings')} />;
+        return <NotificationsScreen onBack={() => setCurrentScreen('home')} />;
       case 'userProfile':
         return (
         <UserProfileScreen
