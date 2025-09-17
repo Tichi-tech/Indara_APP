@@ -4,9 +4,10 @@ import { X, Settings } from 'lucide-react';
 interface CreateMusicScreenProps {
   onClose: () => void;
   onPlaySong: (song: any) => void;
+  onOpenSongPlayer?: (song: any) => void;
 }
 
-const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySong }) => {
+const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySong, onOpenSongPlayer }) => {
   const [activeTab, setActiveTab] = useState('Music');
   const [inputText, setInputText] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -74,7 +75,11 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
     };
     
     onClose();
-    onPlaySong(newSong);
+    if (onOpenSongPlayer) {
+      onOpenSongPlayer(newSong);
+    } else {
+      onPlaySong(newSong);
+    }
   };
 
   const handleInputFocus = () => {
