@@ -38,6 +38,8 @@ interface HomeScreenProps {
   songs: Song[];
   onPlaySong: (song: Song) => void;
   onNameEntry: () => void;
+  onHealingMusicPlaylist: () => void;
+  onMeditationPlaylist: () => void;
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -49,11 +51,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   songs: _songs,
   onPlaySong: _onPlaySong,
   onNameEntry: _onNameEntry,
+  onHealingMusicPlaylist,
+  onMeditationPlaylist,
 }) => {
   const [activeCategory, setActiveCategory] = useState<'music' | 'meditation'>('music');
 
   // Sample data
-  const healingTracks: Song[] = [
+  const musicTracks: Song[] = [
     {
       id: 'h1',
       title: 'Peaceful Morning',
@@ -116,6 +120,72 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     },
   ];
 
+  const meditationTracks: Song[] = [
+    {
+      id: 'm1',
+      title: 'Mindful Breathing',
+      description: 'Guided breathing meditation for beginners',
+      tags: 'breathing, mindfulness, guided',
+      plays: 4200,
+      likes: 312,
+      image:
+        'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=400',
+      version: '1.0',
+      isPublic: true,
+      createdAt: '2024-01-16',
+      creator: 'Zen.Master',
+      duration: '10:00',
+    },
+    {
+      id: 'm2',
+      title: 'Body Scan Relaxation',
+      description: 'Progressive muscle relaxation technique',
+      tags: 'body scan, relaxation, progressive',
+      plays: 3600,
+      likes: 278,
+      image:
+        'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=400',
+      version: '1.0',
+      isPublic: true,
+      createdAt: '2024-01-15',
+      creator: 'Calm.Guide',
+      duration: '15:30',
+    },
+    {
+      id: 'm3',
+      title: 'Chakra Alignment',
+      description: 'Healing frequencies for chakra balancing',
+      tags: 'chakra, healing, frequencies',
+      plays: 2900,
+      likes: 189,
+      image:
+        'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=400',
+      version: '1.0',
+      isPublic: true,
+      createdAt: '2024-01-14',
+      creator: 'Energy.Healer',
+      duration: '20:15',
+    },
+    {
+      id: 'm4',
+      title: 'Sleep Meditation',
+      description: 'Gentle meditation to help you fall asleep',
+      tags: 'sleep, bedtime, gentle',
+      plays: 5100,
+      likes: 423,
+      image:
+        'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=400',
+      version: '1.0',
+      isPublic: true,
+      createdAt: '2024-01-13',
+      creator: 'Dream.Guide',
+      duration: '25:00',
+    },
+  ];
+
+  // Get current tracks based on active category
+  const currentTracks = activeCategory === 'music' ? musicTracks : meditationTracks;
+
   const featuredPlaylists: Playlist[] = [
     {
       id: '1',
@@ -163,7 +233,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     },
     {
       id: '5',
-      title: 'Baby Sleep',
+      title: 'Baby Setting',
       description: 'Gentle lullabies for babies and toddlers',
       image:
         'https://images.pexels.com/photos/1496373/pexels-photo-1496373.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -237,7 +307,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           <section className="mb-8">
             <div className="flex items-center justify-between px-6 mb-4">
               <h2 className="text-2xl font-bold text-black">Healing Community</h2>
-              <button className="text-gray-600 font-medium flex items-center gap-1">
+              <button 
+                onClick={activeCategory === 'music' ? onHealingMusicPlaylist : onMeditationPlaylist}
+                className="text-gray-600 font-medium flex items-center gap-1"
+              >
                 More
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -247,7 +320,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
             <div className="overflow-x-auto no-scrollbar px-6">
               <div className="flex gap-4 w-max">
-                {healingTracks.map((track) => (
+                {currentTracks.map((track) => (
                   <article key={track.id} className="flex-shrink-0 w-48">
                     <div className="grid grid-rows-[128px_auto] rounded-2xl overflow-hidden">
                       {/* Image */}
