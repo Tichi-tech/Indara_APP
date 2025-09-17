@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { ArrowLeft, Search, Music, Plus, Filter } from 'lucide-react';
 import BottomNav from './BottomNav';
 import CreateMusicScreen from './CreateMusicScreen';

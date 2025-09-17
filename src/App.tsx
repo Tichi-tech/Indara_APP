@@ -18,6 +18,8 @@ import AccountSettingsScreen from './components/AccountSettingsScreen';
 import ProfileScreen from './components/ProfileScreen';
 import NotificationsScreen from './components/NotificationsScreen';
 import UserProfileScreen from './components/UserProfileScreen';
+import HealingMusicPlaylist from './components/HealingMusicPlaylist';
+import MeditationPlaylist from './components/Meditationplaylist';
 import StatusBar from './components/StatusBar';
 
 type Screen =
@@ -35,7 +37,9 @@ type Screen =
   | 'accountSettings'
   | 'profile'
   | 'notifications'
-  | 'userProfile';
+  | 'userProfile'
+  | 'healingMusicPlaylist'
+  | 'meditationPlaylist';
 
 export interface Song {
   id: string;
@@ -72,6 +76,8 @@ const PROTECTED_SCREENS = new Set<Screen>([
   'profile',
   'notifications',
   'userProfile',
+  'healingMusicPlaylist',
+  'meditationPlaylist',
 ]);
 
 function App() {
@@ -263,14 +269,31 @@ function App() {
       case 'home':
         return (
           <HomeScreen
-            onCreateMusic={() => setCurrentScreen('createMusic')}
-            onMySongs={() => setCurrentScreen('mySongs')}
-            onAccountSettings={() => setCurrentScreen('accountSettings')}
+            onCreateMusic={() => {
+              console.log('🎵 Create Music clicked');
+              setCurrentScreen('createMusic');
+            }}
+            onMySongs={() => {
+              console.log('📚 Library clicked');
+              setCurrentScreen('mySongs');
+            }}
+            onAccountSettings={() => {
+              console.log('⚙️ Account Settings clicked');
+              setCurrentScreen('accountSettings');
+            }}
             userName={userName}
             userHandle={userHandle}
             songs={publicSongs}
             onPlaySong={handlePlaySong}
             onNameEntry={() => setCurrentScreen('nameEntry')}
+            onHealingMusicPlaylist={() => {
+              console.log('🎶 Healing Music Playlist clicked');
+              setCurrentScreen('healingMusicPlaylist');
+            }}
+            onMeditationPlaylist={() => {
+              console.log('🧘 Meditation Playlist clicked');
+              setCurrentScreen('meditationPlaylist');
+            }}
           />
         );
       case 'createMusic':
@@ -337,6 +360,24 @@ function App() {
           userHandle={userHandle}
         />
         );
+      case 'healingMusicPlaylist':
+        return (
+          <HealingMusicPlaylist
+            onBack={() => setCurrentScreen('home')}
+            onCreateMusic={() => setCurrentScreen('createMusic')}
+            onMySongs={() => setCurrentScreen('mySongs')}
+            onAccountSettings={() => setCurrentScreen('accountSettings')}
+          />
+        );
+      case 'meditationPlaylist':
+        return (
+          <MeditationPlaylist
+            onBack={() => setCurrentScreen('home')}
+            onCreateMusic={() => setCurrentScreen('createMusic')}
+            onMySongs={() => setCurrentScreen('mySongs')}
+            onAccountSettings={() => setCurrentScreen('accountSettings')}
+          />
+        );
       default:
         return (
           <WelcomeScreen
@@ -401,77 +442,6 @@ function App() {
           </div>
         )}
 
-        {/* Bottom Navigation Bar - Only show after onboarding */}
-        {PROTECTED_SCREENS.has(currentScreen) && (
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 mx-auto max-w-[375px]">
-            <div className="flex items-center justify-around py-2">
-              <button
-                onClick={() => setCurrentScreen('home')}
-                className={`flex flex-col items-center gap-1 p-3 ${
-                  currentScreen === 'home' ? 'text-black' : 'text-gray-400'
-                }`}
-              >
-                <div className="w-6 h-6 flex items-center justify-center">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-                  </svg>
-                </div>
-                <span className="text-xs font-medium">Home</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentScreen('mySongs')}
-                className={`flex flex-col items-center gap-1 p-3 ${
-                  currentScreen === 'mySongs' ? 'text-black' : 'text-gray-400'
-                }`}
-              >
-                <div className="w-6 h-6 flex items-center justify-center">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                    <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z" />
-                  </svg>
-                </div>
-                <span className="text-xs font-medium">Library</span>
-              </button>
-
-              <button onClick={() => setCurrentScreen('createMusic')} className="relative">
-                <div className="w-14 h-14 bg-gradient-to-r from-orange-400 via-pink-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                  <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6">
-                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-                  </svg>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setCurrentScreen('notifications')}
-                className={`flex flex-col items-center gap-1 p-3 ${
-                  currentScreen === 'notifications' ? 'text-black' : 'text-gray-400'
-                }`}
-              >
-                <div className="w-6 h-6 flex items-center justify-center relative">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
-                  </svg>
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
-                </div>
-                <span className="text-xs font-medium">Inbox</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentScreen('accountSettings')}
-                className={`flex flex-col items-center gap-1 p-3 ${
-                  currentScreen === 'accountSettings' ? 'text-black' : 'text-gray-400'
-                }`}
-              >
-                <div className="w-6 h-6 bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-400 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">
-                    {userName.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <span className="text-xs font-medium">Account</span>
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
