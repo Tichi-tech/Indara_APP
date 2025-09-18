@@ -20,6 +20,11 @@ import NotificationsScreen from './components/NotificationsScreen';
 import UserProfileScreen from './components/UserProfileScreen';
 import HealingMusicPlaylist from './components/HealingMusicPlaylist';
 import MeditationPlaylist from './components/Meditationplaylist';
+import PlaylistScreen from './components/PlaylistScreen';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
+import TalkToDaraScreen from './components/TalkToDaraScreen';
+import MeditationAssistantScreen from './components/MeditationAssistantScreen';
+import MeditationCreationScreen from './components/MeditationCreationScreen';
 import StatusBar from './components/StatusBar';
 
 type Screen =
@@ -39,7 +44,12 @@ type Screen =
   | 'notifications'
   | 'userProfile'
   | 'healingMusicPlaylist'
-  | 'meditationPlaylist';
+  | 'meditationPlaylist'
+  | 'playlist'
+  | 'analytics'
+  | 'talkToDara'
+  | 'meditationAssistant'
+  | 'meditationCreation';
 
 export interface Song {
   id: string;
@@ -78,6 +88,11 @@ const PROTECTED_SCREENS = new Set<Screen>([
   'userProfile',
   'healingMusicPlaylist',
   'meditationPlaylist',
+  'playlist',
+  'analytics',
+  'talkToDara',
+  'meditationAssistant',
+  'meditationCreation',
 ]);
 
 function App() {
@@ -95,6 +110,7 @@ function App() {
   const [isPlayerMinimized, setIsPlayerMinimized] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<{name: string; description?: string} | null>(null);
 
   // App bootstrap + error boundary
   useEffect(() => {
@@ -299,6 +315,11 @@ function App() {
               console.log('🧘 Meditation Playlist clicked');
               setCurrentScreen('meditationPlaylist');
             }}
+            onPlaylist={(playlistName: string, playlistDescription?: string) => {
+              console.log('🎵 Featured Playlist clicked:', playlistName);
+              setSelectedPlaylist({ name: playlistName, description: playlistDescription });
+              setCurrentScreen('playlist');
+            }}
             onInbox={() => {
               console.log('📥 Inbox clicked');
               setCurrentScreen('notifications');
@@ -310,6 +331,7 @@ function App() {
           <CreateMusicScreen
             onClose={() => setCurrentScreen('home')}
             onPlaySong={handlePlaySong}
+            onTalkToDara={() => setCurrentScreen('talkToDara')}
           />
         );
       case 'mySongs':
@@ -344,6 +366,7 @@ function App() {
             onViewProfile={() => setCurrentScreen('userProfile')}
             onEditProfile={() => setCurrentScreen('profile')}
             onNotifications={() => setCurrentScreen('notifications')}
+            onAnalytics={() => setCurrentScreen('analytics')}
             refreshProfile={handleRefreshProfile}
           />
         );
@@ -387,6 +410,60 @@ function App() {
             onCreateMusic={() => setCurrentScreen('createMusic')}
             onMySongs={() => setCurrentScreen('mySongs')}
             onAccountSettings={() => setCurrentScreen('accountSettings')}
+          />
+        );
+      case 'playlist':
+        return (
+          <PlaylistScreen
+            playlistName={selectedPlaylist?.name || 'Featured Playlist'}
+            playlistDescription={selectedPlaylist?.description}
+            onBack={() => setCurrentScreen('home')}
+            onCreateMusic={() => setCurrentScreen('createMusic')}
+            onMySongs={() => setCurrentScreen('mySongs')}
+            onAccountSettings={() => setCurrentScreen('accountSettings')}
+            onInbox={() => setCurrentScreen('notifications')}
+          />
+        );
+      case 'analytics':
+        return (
+          <AnalyticsDashboard
+            onBack={() => setCurrentScreen('accountSettings')}
+            onCreateMusic={() => setCurrentScreen('createMusic')}
+            onMySongs={() => setCurrentScreen('mySongs')}
+            onAccountSettings={() => setCurrentScreen('accountSettings')}
+            onInbox={() => setCurrentScreen('notifications')}
+          />
+        );
+      case 'talkToDara':
+        return (
+          <TalkToDaraScreen
+            onBack={() => setCurrentScreen('home')}
+            onCreateMusic={() => setCurrentScreen('createMusic')}
+            onMySongs={() => setCurrentScreen('mySongs')}
+            onAccountSettings={() => setCurrentScreen('accountSettings')}
+            onInbox={() => setCurrentScreen('notifications')}
+          />
+        );
+      case 'meditationAssistant':
+        return (
+          <MeditationAssistantScreen
+            onBack={() => setCurrentScreen('home')}
+            onCreateMusic={() => setCurrentScreen('createMusic')}
+            onMySongs={() => setCurrentScreen('mySongs')}
+            onAccountSettings={() => setCurrentScreen('accountSettings')}
+            onInbox={() => setCurrentScreen('notifications')}
+            onStartSession={(sessionType, duration) => {
+              console.log('Starting meditation session:', sessionType, duration);
+              // Could navigate to a meditation session screen or start inline
+            }}
+          />
+        );
+      case 'meditationCreation':
+        return (
+          <MeditationCreationScreen
+            onClose={() => setCurrentScreen('home')}
+            onPlaySong={handlePlaySong}
+            onTalkToDara={() => setCurrentScreen('talkToDara')}
           />
         );
       default:

@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Search, Music, Plus, Filter } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Search, Music, Plus, Filter, Heart, Play, Pause } from 'lucide-react';
 import BottomNav from './BottomNav';
 import CreateMusicScreen from './CreateMusicScreen';
+import { musicApi } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { useMusicPlayer } from '../hooks/useMusicPlayer';
 
 interface Song {
   id: string;
@@ -38,56 +41,123 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
   userSongs,
   onPlaySong: _onPlaySong
 }) => {
+  const { user } = useAuth();
+  const { currentTrack, isPlaying, playTrack, togglePlayPause } = useMusicPlayer();
   const [activeFilter, setActiveFilter] = useState('All');
   const [showCreateScreen, setShowCreateScreen] = useState(false);
+  const [likingTracks, setLikingTracks] = useState<Set<string>>(new Set());
+  const [featuredTracks, setFeaturedTracks] = useState<Song[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const filters = ['All', 'Music', 'Meditation'];
 
+  // Fetch featured tracks for playlist/liked sections
+  useEffect(() => {
+    const fetchFeaturedTracks = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await musicApi.getFeaturedTracks();
+
+        if (!error && data) {
+          // Transform backend data to Song format
+          const transformedTracks = data.map(track => ({
+            id: track.id,
+            title: track.title || 'Untitled',
+            description: track.prompt || track.admin_notes || '',
+            tags: track.style || '',
+            plays: Math.floor(Math.random() * 1000),
+            likes: Math.floor(Math.random() * 100),
+            image: track.thumbnail_url || 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+            version: '1.0',
+            isPublic: true,
+            createdAt: track.created_at,
+            creator: track.profiles?.display_name || 'Community',
+            duration: track.duration || '3:45',
+            audio_url: track.audio_url
+          }));
+          setFeaturedTracks(transformedTracks);
+        } else {
+          setFeaturedTracks([]);
+        }
+      } catch (err) {
+        console.error('Error fetching featured tracks:', err);
+        setFeaturedTracks([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeaturedTracks();
+  }, []);
+
+  // Helper function to get first two words from title
+  const getTwoWords = (title: string) => {
+    const words = title.trim().split(' ');
+    return words.slice(0, 2).join(' ');
+  };
+
   const handleCreateMusic = () => {
     setShowCreateScreen(true);
+  };
+
+  const handleLikeSong = async (song: Song) => {
+    if (!user?.id || likingTracks.has(song.id)) return;
+
+    setLikingTracks(prev => new Set([...prev, song.id]));
+
+    try {
+      const { data, error } = await musicApi.likeTrack(user.id, song.id);
+      if (error) {
+        console.error('Failed to toggle like:', error);
+      } else {
+        console.log(`Song ${data.liked ? 'liked' : 'unliked'}`);
+        // You might want to update the song's like status here
+        // or refetch the songs to get updated like counts
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    } finally {
+      setLikingTracks(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(song.id);
+        return newSet;
+      });
+    }
+  };
+
+  const handlePlaySong = async (song: Song) => {
+    if (!song.audio_url) {
+      console.warn('No audio URL for song:', song.title);
+      return;
+    }
+
+    try {
+      // If this song is currently playing, toggle pause/play
+      if (currentTrack?.id === song.id) {
+        await togglePlayPause();
+      } else {
+        // Play new song
+        await playTrack({
+          id: song.id,
+          title: song.title,
+          artist: song.creator,
+          duration: song.duration ? parseInt(song.duration.split(':')[0]) * 60 + parseInt(song.duration.split(':')[1]) : undefined,
+          audio_url: song.audio_url,
+          thumbnail_url: song.image
+        });
+      }
+    } catch (error) {
+      console.error('Error playing song:', error);
+    }
   };
 
   const handleCloseCreateScreen = () => {
     setShowCreateScreen(false);
   };
 
-  // Sample playlist data
-  const playlists = [
-    {
-      id: '1',
-      title: 'soothing sleep',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400'
-    },
-    {
-      id: '2',
-      title: 'soothing sleep',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400'
-    },
-    {
-      id: '3',
-      title: 'soothing sleep',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400'
-    }
-  ];
-
-  // Sample liked songs data
-  const likedSongs = [
-    {
-      id: '1',
-      title: 'soothing sleep',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400'
-    },
-    {
-      id: '2',
-      title: 'soothing sleep',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400'
-    },
-    {
-      id: '3',
-      title: 'soothing sleep',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400'
-    }
-  ];
+  // Get tracks for playlists and liked sections - use featured tracks as examples
+  const playlistTracks = featuredTracks.slice(0, 3); // First 3 tracks as saved playlists
+  const likedTracks = featuredTracks.slice(3, 6);    // Next 3 tracks as liked songs
 
   return (
     <div className="min-h-dvh bg-white">
@@ -119,18 +189,52 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
             
             {/* Playlists Grid */}
             <div className="grid grid-cols-3 gap-4 mb-2">
-              {playlists.map((playlist) => (
-                <div key={playlist.id} className="flex flex-col items-center">
-                  <img
-                    src={playlist.image}
-                    alt={playlist.title}
-                    className="w-full aspect-square rounded-2xl object-cover mb-3"
-                  />
-                  <span className="text-sm text-black font-medium text-center">
-                    {playlist.title}
-                  </span>
-                </div>
-              ))}
+              {loading ? (
+                // Loading state
+                [1, 2, 3].map((i) => (
+                  <div key={i} className="flex flex-col items-center">
+                    <div className="w-full aspect-square rounded-2xl bg-gray-200 mb-3 animate-pulse" />
+                    <div className="h-4 bg-gray-200 rounded w-16 animate-pulse" />
+                  </div>
+                ))
+              ) : playlistTracks.length > 0 ? (
+                playlistTracks.map((track) => (
+                  <div key={track.id} className="flex flex-col items-center">
+                    <div className="relative w-full aspect-square rounded-2xl overflow-hidden mb-3">
+                      <img
+                        src={track.image}
+                        alt={track.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        onClick={() => handlePlaySong(track)}
+                        className="absolute inset-0 bg-black/20 flex items-center justify-center hover:bg-black/40 transition-colors"
+                      >
+                        {currentTrack?.id === track.id && isPlaying ? (
+                          <Pause className="w-6 h-6 text-white fill-white" />
+                        ) : (
+                          <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+                        )}
+                      </button>
+                    </div>
+                    <span className="text-sm text-black font-medium text-center">
+                      {getTwoWords(track.title)}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                // Empty state
+                [1, 2, 3].map((i) => (
+                  <div key={i} className="flex flex-col items-center">
+                    <div className="w-full aspect-square rounded-2xl bg-gray-100 mb-3 flex items-center justify-center">
+                      <Music className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <span className="text-sm text-gray-400 font-medium text-center">
+                      No tracks
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
             
             {/* Underline */}
@@ -143,18 +247,52 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
             
             {/* Liked Songs Grid */}
             <div className="grid grid-cols-3 gap-4 mb-2">
-              {likedSongs.map((song) => (
-                <div key={song.id} className="flex flex-col items-center">
-                  <img
-                    src={song.image}
-                    alt={song.title}
-                    className="w-full aspect-square rounded-2xl object-cover mb-3"
-                  />
-                  <span className="text-sm text-black font-medium text-center">
-                    {song.title}
-                  </span>
-                </div>
-              ))}
+              {loading ? (
+                // Loading state
+                [1, 2, 3].map((i) => (
+                  <div key={i} className="flex flex-col items-center">
+                    <div className="w-full aspect-square rounded-2xl bg-gray-200 mb-3 animate-pulse" />
+                    <div className="h-4 bg-gray-200 rounded w-16 animate-pulse" />
+                  </div>
+                ))
+              ) : likedTracks.length > 0 ? (
+                likedTracks.map((track) => (
+                  <div key={track.id} className="flex flex-col items-center">
+                    <div className="relative w-full aspect-square rounded-2xl overflow-hidden mb-3">
+                      <img
+                        src={track.image}
+                        alt={track.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        onClick={() => handlePlaySong(track)}
+                        className="absolute inset-0 bg-black/20 flex items-center justify-center hover:bg-black/40 transition-colors"
+                      >
+                        {currentTrack?.id === track.id && isPlaying ? (
+                          <Pause className="w-6 h-6 text-white fill-white" />
+                        ) : (
+                          <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+                        )}
+                      </button>
+                    </div>
+                    <span className="text-sm text-black font-medium text-center">
+                      {getTwoWords(track.title)}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                // Empty state
+                [1, 2, 3].map((i) => (
+                  <div key={i} className="flex flex-col items-center">
+                    <div className="w-full aspect-square rounded-2xl bg-gray-100 mb-3 flex items-center justify-center">
+                      <Heart className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <span className="text-sm text-gray-400 font-medium text-center">
+                      No likes
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
             
             {/* Underline */}
@@ -207,6 +345,77 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
                 >
                   Create your first song
                 </button>
+              </div>
+            )}
+
+            {/* Songs List */}
+            {userSongs.length > 0 && (
+              <div className="space-y-4">
+                {userSongs.map((song) => (
+                  <div key={song.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                    {/* Song Image */}
+                    <div className="relative">
+                      <img
+                        src={song.image}
+                        alt={song.title}
+                        className="w-16 h-16 rounded-xl object-cover"
+                      />
+                      {/* Play/Pause Button Overlay */}
+                      <button
+                        onClick={() => handlePlaySong(song)}
+                        className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-xl opacity-0 hover:opacity-100 transition-opacity"
+                      >
+                        {currentTrack?.id === song.id && isPlaying ? (
+                          <Pause className="w-6 h-6 text-white" />
+                        ) : (
+                          <Play className="w-6 h-6 text-white ml-1" />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Song Info */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-black truncate">{song.title}</h3>
+                      <p className="text-gray-600 text-sm truncate">{song.description}</p>
+                      <div className="flex items-center gap-4 text-gray-500 text-xs mt-1">
+                        <span>{song.duration || '3:45'}</span>
+                        <span>{song.plays} plays</span>
+                        <span>{song.likes} likes</span>
+                        {song.tags && <span>#{song.tags}</span>}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2">
+                      {/* Like Button */}
+                      <button
+                        onClick={() => handleLikeSong(song)}
+                        disabled={likingTracks.has(song.id)}
+                        className={`p-2 rounded-full transition-colors ${
+                          song.isLiked
+                            ? 'text-red-500 bg-red-50'
+                            : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+                        } ${likingTracks.has(song.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <Heart
+                          className={`w-5 h-5 ${song.isLiked ? 'fill-current' : ''}`}
+                        />
+                      </button>
+
+                      {/* Play Button */}
+                      <button
+                        onClick={() => handlePlaySong(song)}
+                        className="p-2 rounded-full text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                      >
+                        {currentTrack?.id === song.id && isPlaying ? (
+                          <Pause className="w-5 h-5" />
+                        ) : (
+                          <Play className="w-5 h-5 ml-0.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

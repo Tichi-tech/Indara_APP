@@ -1,114 +1,130 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Bell, Music, Heart, MessageCircle, UserPlus, Settings } from 'lucide-react';
+import { ArrowLeft, Bell, Music, Heart, MessageCircle, UserPlus, Settings, Star, Trash2 } from 'lucide-react';
+import { useNotifications, Notification } from '../hooks/useNotifications';
+import { useAuth } from '../hooks/useAuth';
 
 interface NotificationsScreenProps {
   onBack: () => void;
 }
 
-interface Notification {
-  id: string;
-  type: 'like' | 'comment' | 'follow' | 'music' | 'system';
-  title: string;
-  message: string;
-  time: string;
-  isRead: boolean;
-  avatar?: string;
-  trackImage?: string;
-}
-
 const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ onBack }) => {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'like',
-      title: 'Sarah liked your track',
-      message: '"Peaceful Morning" received a new like',
-      time: '2 hours ago',
-      isRead: false,
-      avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop'
-    },
-    {
-      id: '2',
-      type: 'follow',
-      title: 'Alex started following you',
-      message: 'Check out their healing music collection',
-      time: '4 hours ago',
-      isRead: false,
-      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop'
-    },
-    {
-      id: '3',
-      type: 'music',
-      title: 'New track generated',
-      message: '"Ocean Waves" is ready to listen',
-      time: '6 hours ago',
-      isRead: true,
-      trackImage: 'https://images.pexels.com/photos/1001682/pexels-photo-1001682.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop'
-    },
-    {
-      id: '4',
-      type: 'comment',
-      title: 'Maya commented on your track',
-      message: '"This helped me so much during meditation"',
-      time: '1 day ago',
-      isRead: true,
-      avatar: 'https://images.pexels.com/photos/1130626/pexels-photo-1130626.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop'
-    },
-    {
-      id: '5',
-      type: 'system',
-      title: 'Weekly summary ready',
-      message: 'Your healing music impact report is available',
-      time: '2 days ago',
-      isRead: true
-    }
-  ]);
+  const { user } = useAuth();
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification
+  } = useNotifications();
 
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, isRead: true } : notif
-      )
-    );
+  const handleNotificationClick = async (notification: Notification) => {
+    // Mark as read if not already read
+    if (!notification.is_read) {
+      await markAsRead(notification.id);
+    }
+
+    // Handle different notification types with navigation
+    switch (notification.type) {
+      case 'like':
+      case 'track_featured':
+        // Navigate to track or player
+        if (notification.data?.track_id) {
+          console.log('Navigate to track:', notification.data.track_id);
+          // onNavigateToTrack?.(notification.data.track_id);
+        }
+        break;
+      case 'follow':
+        // Navigate to user profile
+        if (notification.data?.follower_id) {
+          console.log('Navigate to user profile:', notification.data.follower_id);
+          // onNavigateToProfile?.(notification.data.follower_id);
+        }
+        break;
+      case 'dm':
+        // Navigate to direct messages
+        if (notification.data?.sender_id) {
+          console.log('Navigate to DM with:', notification.data.sender_id);
+          // onNavigateToDM?.(notification.data.sender_id);
+        }
+        break;
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, isRead: true }))
-    );
+  const handleDeleteNotification = async (e: React.MouseEvent, notificationId: string) => {
+    e.stopPropagation(); // Prevent triggering onClick
+    await deleteNotification(notificationId);
   };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'like':
-        return <Heart className="w-5 h-5 text-red-500" />;
+        return <Heart className="w-4 h-4 text-red-500" />;
       case 'comment':
-        return <MessageCircle className="w-5 h-5 text-blue-500" />;
+        return <MessageCircle className="w-4 h-4 text-blue-500" />;
       case 'follow':
-        return <UserPlus className="w-5 h-5 text-green-500" />;
-      case 'music':
-        return <Music className="w-5 h-5 text-purple-500" />;
+        return <UserPlus className="w-4 h-4 text-green-500" />;
+      case 'dm':
+        return <MessageCircle className="w-4 h-4 text-purple-500" />;
+      case 'track_featured':
+        return <Star className="w-4 h-4 text-yellow-500" />;
       case 'system':
-        return <Bell className="w-5 h-5 text-gray-500" />;
+        return <Bell className="w-4 h-4 text-gray-500" />;
       default:
-        return <Bell className="w-5 h-5 text-gray-500" />;
+        return <Bell className="w-4 h-4 text-gray-500" />;
     }
   };
 
-  const filteredNotifications = filter === 'unread' 
-    ? notifications.filter(n => !n.isRead)
+  const getNotificationBgColor = (type: string) => {
+    switch (type) {
+      case 'like':
+        return 'from-red-500 to-pink-500';
+      case 'comment':
+      case 'dm':
+        return 'from-blue-500 to-purple-500';
+      case 'follow':
+        return 'from-green-500 to-teal-500';
+      case 'track_featured':
+        return 'from-yellow-500 to-orange-500';
+      case 'system':
+        return 'from-gray-500 to-gray-600';
+      default:
+        return 'from-purple-500 to-pink-500';
+    }
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const filteredNotifications = filter === 'unread'
+    ? notifications.filter(n => !n.is_read)
     : notifications;
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  if (loading) {
+    return (
+      <div className="h-full bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full bg-white flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-100">
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={onBack}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
           >
@@ -121,8 +137,8 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ onBack }) => 
             )}
           </div>
         </div>
-        
-        <button 
+
+        <button
           onClick={() => {/* Navigate to notification settings */}}
           className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
         >
@@ -157,7 +173,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ onBack }) => 
             </span>
           )}
         </button>
-        
+
         {unreadCount > 0 && (
           <button
             onClick={markAllAsRead}
@@ -179,7 +195,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ onBack }) => 
               {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
             </h3>
             <p className="text-gray-600 text-sm">
-              {filter === 'unread' 
+              {filter === 'unread'
                 ? 'All caught up! Check back later for new updates.'
                 : 'When you receive notifications, they\'ll appear here.'
               }
@@ -190,32 +206,26 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ onBack }) => 
             {filteredNotifications.map((notification) => (
               <div
                 key={notification.id}
-                onClick={() => markAsRead(notification.id)}
+                onClick={() => handleNotificationClick(notification)}
                 className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
-                  !notification.isRead ? 'bg-blue-50' : ''
+                  !notification.is_read ? 'bg-blue-50' : ''
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  {/* Avatar or Track Image */}
+                  {/* Avatar or Icon */}
                   <div className="relative flex-shrink-0">
-                    {notification.avatar ? (
+                    {notification.sender?.avatar_url ? (
                       <img
-                        src={notification.avatar}
-                        alt=""
+                        src={notification.sender.avatar_url}
+                        alt={notification.sender.display_name}
                         className="w-12 h-12 rounded-full object-cover"
                       />
-                    ) : notification.trackImage ? (
-                      <img
-                        src={notification.trackImage}
-                        alt=""
-                        className="w-12 h-12 rounded-lg object-cover"
-                      />
                     ) : (
-                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-400 rounded-full flex items-center justify-center">
+                      <div className={`w-12 h-12 bg-gradient-to-br ${getNotificationBgColor(notification.type)} rounded-full flex items-center justify-center`}>
                         {getNotificationIcon(notification.type)}
                       </div>
                     )}
-                    
+
                     {/* Type Icon Overlay */}
                     <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-200">
                       {getNotificationIcon(notification.type)}
@@ -227,7 +237,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ onBack }) => 
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
                         <h4 className={`text-sm font-medium ${
-                          !notification.isRead ? 'text-black' : 'text-gray-900'
+                          !notification.is_read ? 'text-black' : 'text-gray-900'
                         }`}>
                           {notification.title}
                         </h4>
@@ -235,14 +245,24 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ onBack }) => 
                           {notification.message}
                         </p>
                         <p className="text-xs text-gray-500 mt-2">
-                          {notification.time}
+                          {formatTimeAgo(notification.created_at)}
                         </p>
                       </div>
-                      
-                      {/* Unread Indicator */}
-                      {!notification.isRead && (
-                        <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0 mt-2"></div>
-                      )}
+
+                      <div className="flex items-center gap-2">
+                        {/* Delete Button */}
+                        <button
+                          onClick={(e) => handleDeleteNotification(e, notification.id)}
+                          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="w-4 h-4 text-gray-500" />
+                        </button>
+
+                        {/* Unread Indicator */}
+                        {!notification.is_read && (
+                          <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

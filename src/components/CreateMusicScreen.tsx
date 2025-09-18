@@ -1,18 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Settings } from 'lucide-react';
+import { musicApi } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { useRealtimeUpdates } from '../hooks/useRealtimeUpdates';
 
 interface CreateMusicScreenProps {
   onClose: () => void;
   onPlaySong: (song: any) => void;
   onOpenSongPlayer?: (song: any) => void;
+  onTalkToDara?: () => void;
 }
 
-const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySong, onOpenSongPlayer }) => {
+const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySong, onOpenSongPlayer, onTalkToDara }) => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('Music');
   const [inputText, setInputText] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [creationState, setCreationState] = useState<'idle' | 'talking' | 'creating' | 'ready'>('idle');
   const [showKeyboard, setShowKeyboard] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [currentJobStatus, setCurrentJobStatus] = useState<string | null>(null);
 
   const musicTags = [
     'Energy', 'Relax', 'Study', 
@@ -27,6 +36,62 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
   ];
 
   const currentTags = activeTab === 'Music' ? musicTags : meditationTags;
+
+  // Real-time job updates handler
+  const handleJobUpdate = (job: any) => {
+    console.log('🔄 Real-time job update received:', job);
+
+    // Only handle updates for the current job
+    if (job.id === currentJobId) {
+      setCurrentJobStatus(job.status);
+
+      // Update progress based on job status
+      switch (job.status) {
+        case 'pending':
+          setGenerationProgress(10);
+          break;
+        case 'processing':
+          setGenerationProgress(50);
+          break;
+        case 'completed':
+          setGenerationProgress(100);
+          setCreationState('ready');
+
+          // Handle completed track
+          if (job.generated_tracks && job.generated_tracks.length > 0) {
+            const track = job.generated_tracks[0];
+            const createdTrack = {
+              id: track.id,
+              title: track.title || `${activeTab}: ${inputText.slice(0, 30)}...`,
+              description: inputText,
+              tags: selectedTags.join(', '),
+              duration: activeTab === 'Meditation' ? '5:00' : '3:00',
+              audio_url: track.audio_url,
+              status: 'completed'
+            };
+
+            if (onPlaySong) {
+              onPlaySong(createdTrack);
+            }
+          }
+          break;
+        case 'failed':
+          setError(`${activeTab} generation failed. Please try again.`);
+          setCreationState('idle');
+          setGenerationProgress(0);
+          break;
+      }
+    }
+  };
+
+  // Setup real-time subscriptions
+  useRealtimeUpdates({
+    onJobUpdate: handleJobUpdate,
+    onNewFeaturedTrack: (track) => {
+      console.log('🎵 New featured track available:', track);
+      // Could show a notification or update the home screen
+    }
+  });
 
   const handleTagClick = (tag: string) => {
     setSelectedTags(prev => 
@@ -45,15 +110,91 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
   };
 
   const handleTalkToDara = () => {
-    // TODO: Connect chatbot AI here
+    if (onTalkToDara) {
+      onTalkToDara();
+    }
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
+    if (!user) {
+      setError(`Please sign in to create ${activeTab.toLowerCase()}`);
+      return;
+    }
+
+    if (!inputText.trim()) {
+      setError(`Please enter a description for your ${activeTab.toLowerCase()}`);
+      return;
+    }
+
     setCreationState('creating');
     setShowKeyboard(false);
-    setTimeout(() => {
-      setCreationState('ready');
-    }, 3000);
+    setError(null);
+    setGenerationProgress(0);
+
+    try {
+      const prompt = inputText.trim();
+      const style = selectedTags.length > 0 ? selectedTags.join(', ') : 'Ambient';
+
+      if (activeTab === 'Meditation') {
+        console.log('🧘 Starting meditation generation with ElevenLabs + Suno...');
+
+        // Use meditation API with 5 minutes default - includes ElevenLabs for vocal and Suno for music
+        const { data, error } = await musicApi.generateMeditationSession({
+          user_text: prompt,
+          duration_sec: 300, // 5 minutes default
+          use_therapist: false // This will use ElevenLabs for vocal generation + Suno for background music
+        });
+
+        if (error) {
+          throw new Error(error.message || 'Failed to generate meditation session');
+        }
+
+        console.log('✅ Meditation generation started (ElevenLabs + Suno):', data);
+
+        // Track the job for real-time updates
+        if (data?.job_id) {
+          setCurrentJobId(data.job_id);
+          setGenerationProgress(10); // Initial progress
+        } else {
+          // Fallback if no job_id returned
+          setError('Started generation but no job ID returned. Please check status manually.');
+        }
+
+      } else {
+        console.log('🎵 Starting music generation with Suno only...');
+
+        // Use music API with 3 minutes default - Suno only for music generation
+        const { data, error } = await musicApi.generateMusic({
+          user_text: prompt,
+          duration_sec: 180, // 3 minutes default
+          engine: 'suno', // Only Suno for music creation
+          style: style
+        });
+
+        if (error) {
+          throw new Error(error.message || 'Failed to generate music');
+        }
+
+        console.log('✅ Music generation started (Suno only):', data);
+
+        // Track the job for real-time updates
+        if (data?.job_id) {
+          setCurrentJobId(data.job_id);
+          setGenerationProgress(10); // Initial progress
+        } else {
+          // Fallback if no job_id returned
+          setError('Started generation but no job ID returned. Please check status manually.');
+        }
+      }
+
+    } catch (err) {
+      console.error(`❌ ${activeTab} generation failed:`, err);
+      setError(err instanceof Error ? err.message : `Failed to generate ${activeTab.toLowerCase()}`);
+      setCreationState('idle');
+      setGenerationProgress(0);
+      setCurrentJobId(null);
+      setCurrentJobStatus(null);
+    }
   };
 
   const handleReady = () => {
@@ -91,6 +232,14 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
   };
 
   const handleKeyPress = (key: string) => {
+    console.log('⌨️ Key pressed:', key, 'Current error:', error);
+
+    // Auto-clear error when user types using keyboard
+    if (error && (key.length === 1 || key === 'space')) {
+      console.log('🧹 Clearing error because user pressed key:', key);
+      setError(null);
+    }
+
     if (key === 'backspace') {
       setInputText(prev => prev.slice(0, -1));
     } else if (key === 'space') {
@@ -112,9 +261,11 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
     <div className="absolute inset-0 bg-white z-50 flex flex-col h-full">
       {/* Header - Always visible */}
       <div className="flex items-center justify-between p-4 border-b border-gray-100">
-        <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-          <Settings className="w-5 h-5 text-gray-600" />
-        </button>
+        <div className="flex items-center gap-3">
+          <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+            <Settings className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
 
         <div className="flex items-center gap-8">
           <button
@@ -154,13 +305,43 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
           <div className="w-full h-64 border-2 border-gray-300 rounded-3xl p-6 mb-6">
             <textarea
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                console.log('📝 Text changed from textarea:', newValue, 'Current error:', error);
+                setInputText(newValue);
+                // Auto-clear error when user starts typing
+                if (error) {
+                  console.log('🧹 Clearing error because user is typing');
+                  setError(null);
+                }
+              }}
               onFocus={handleInputFocus}
               placeholder={`Describe the ${activeTab.toLowerCase()} you want to create...`}
               className="w-full h-full resize-none text-lg leading-relaxed focus:outline-none placeholder-gray-400 border-none bg-transparent"
               disabled={creationState === 'talking' || creationState === 'creating'}
             />
           </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-red-600 text-center">{error}</p>
+            </div>
+          )}
+
+          {/* Generation Progress */}
+          {creationState === 'creating' && (
+            <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+              <p className="text-purple-800 text-center mb-2">✨ Creating your {activeTab.toLowerCase()}...</p>
+              <div className="w-full bg-purple-200 rounded-full h-3">
+                <div
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${generationProgress}%` }}
+                ></div>
+              </div>
+              <p className="text-purple-600 text-center text-sm mt-1">{generationProgress}%</p>
+            </div>
+          )}
 
           {/* Talk to Dara Button - Shows when there's text and not showing keyboard */}
           {inputText.trim() && creationState === 'idle' && !showKeyboard && (
@@ -279,7 +460,7 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
               onClick={handleCreate}
               className="w-full py-4 rounded-full text-lg font-semibold text-white bg-gradient-to-r from-orange-400 via-pink-500 to-purple-600 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
             >
-              ♪ Create Music
+              {activeTab === 'Meditation' ? '🧘' : '♪'} Create {activeTab}
             </button>
           ) : creationState === 'talking' ? (
             <button
@@ -294,14 +475,14 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
               disabled
               className="w-full py-4 rounded-full text-lg font-semibold text-white opacity-70 bg-gradient-to-r from-orange-400 via-pink-500 to-purple-600 flex items-center justify-center gap-2"
             >
-              ⟳ Creating Music...
+              ⟳ Creating {activeTab}...
             </button>
           ) : creationState === 'ready' ? (
             <button
               onClick={handleReady}
               className="w-full py-4 rounded-full text-lg font-semibold bg-green-500 text-white transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
             >
-              ♪ Ready to Play Music
+              {activeTab === 'Meditation' ? '🧘' : '♪'} Ready to Play {activeTab}
             </button>
           ) : null}
         </div>

@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
-import { ArrowLeft, ChevronRight, User, Bell, Shield, HelpCircle, LogOut, Crown } from 'lucide-react';
+import { ArrowLeft, ChevronRight, User, Bell, Shield, HelpCircle, LogOut, Crown, BarChart3 } from 'lucide-react';
 import { useMyProfile } from '../hooks/useMyProfile';
+import { useAuth } from '../hooks/useAuth';
+import { isAdminUser } from '../lib/supabase';
 
 interface AccountSettingsScreenProps {
   onBack: () => void;
@@ -10,6 +12,7 @@ interface AccountSettingsScreenProps {
   onViewProfile: () => void;
   onEditProfile: () => void;
   onNotifications: () => void;
+  onAnalytics?: () => void;
   refreshProfile?: () => void;
 }
 
@@ -21,13 +24,17 @@ const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
   onViewProfile,
   onEditProfile,
   onNotifications,
+  onAnalytics,
   refreshProfile
 }) => {
+  const { user } = useAuth();
   const {
     getDisplayName,
     getUserInitials,
     getUsername
   } = useMyProfile();
+
+  const isAdmin = isAdminUser(user);
 
   // Refresh profile data when returning from edit screen
   useEffect(() => {
@@ -35,7 +42,7 @@ const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
       refreshProfile();
     }
   }, [refreshProfile]);
-  const settingsItems = [
+  const baseSettingsItems = [
     {
       icon: User,
       title: 'Edit Profile',
@@ -55,6 +62,19 @@ const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
       subtitle: 'Manage your notification preferences',
       onClick: onNotifications
     },
+  ];
+
+  // Add Analytics option only for admin users
+  const analyticsItem = isAdmin ? {
+    icon: BarChart3,
+    title: 'Analytics',
+    subtitle: 'View music performance and platform stats',
+    onClick: onAnalytics || (() => console.log('Analytics coming soon'))
+  } : null;
+
+  const settingsItems = [
+    ...baseSettingsItems,
+    ...(analyticsItem ? [analyticsItem] : []),
     {
       icon: Shield,
       title: 'Privacy & Security',

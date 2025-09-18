@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './useAuth'
-import { db } from '../lib/supabase'
+import { musicApi } from '../lib/supabase'
 
 export interface Song {
   id: string;
@@ -39,10 +39,10 @@ export function useSongs() {
     }
 
     try {
-      const { data, error } = await db.getUserSongs(user.id)
+      const { data, error } = await musicApi.getUserTracks(user.id)
       if (error) {
         console.error('Error fetching user songs:', error)
-        setError(error.message)
+        setError('Failed to fetch user tracks')
       } else {
         // Transform database format to app format
         const transformedSongs = (data || []).map(song => ({
@@ -75,10 +75,10 @@ export function useSongs() {
   // Fetch public/featured songs
   const fetchPublicSongs = async () => {
     try {
-      const { data, error } = await db.getPublicSongs()
+      const { data, error } = await musicApi.getFeaturedTracks()
       if (error) {
-        console.error('Error fetching public songs:', error)
-        setError(error.message)
+        console.error('Error fetching featured songs:', error)
+        setError('Failed to fetch featured tracks')
       } else {
         // Transform database format to app format
         const transformedSongs = (data || []).map(song => ({
