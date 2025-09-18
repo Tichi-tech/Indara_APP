@@ -23,6 +23,7 @@ interface MySongsScreenProps {
   onBack: () => void;
   onCreateMusic: () => void;
   onAccountSettings: () => void;
+  onInbox: () => void;
   userName: string;
   userSongs: Song[];
   onPlaySong: (song: Song) => void;
@@ -32,6 +33,7 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
   onBack,
   onCreateMusic,
   onAccountSettings,
+  onInbox,
   userName: _userName,
   userSongs,
   onPlaySong: _onPlaySong
@@ -90,20 +92,6 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
   return (
     <div className="min-h-dvh bg-white">
       <div className="mx-auto max-w-[420px] h-dvh flex flex-col">
-        {/* Status bar sim */}
-        <header className="flex items-center justify-between px-6 py-2 text-sm font-medium">
-          <span aria-hidden="true">13:06</span>
-          <div className="flex items-center gap-1" aria-hidden="true">
-            <div className="flex gap-1">
-              <div className="w-1 h-3 bg-black rounded-full" />
-              <div className="w-1 h-3 bg-black rounded-full" />
-              <div className="w-1 h-3 bg-black rounded-full" />
-            </div>
-            <div className="w-4 h-3 border border-black rounded-sm">
-              <div className="w-3 h-2 bg-black rounded-sm m-0.5" />
-            </div>
-          </div>
-        </header>
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-white">
@@ -224,17 +212,19 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
           </div>
         </main>
 
-        {/* Bottom Navigation */}
-        <BottomNav
-          active="library"
-          onHome={onBack}
-          onLibrary={() => {}}
-          onCreate={handleCreateMusic}
-          onInbox={() => {}}
-          onAccount={onAccountSettings}
-          badgeCount={1}
-          accountInitial="S"
-        />
+        {/* Bottom Navigation - Hide when CreateMusicScreen is shown */}
+        {!showCreateScreen && (
+          <BottomNav
+            active="library"
+            onHome={onBack}
+            onLibrary={() => {}}
+            onCreate={handleCreateMusic}
+            onInbox={onInbox}
+            onAccount={onAccountSettings}
+            badgeCount={1}
+            accountInitial="S"
+          />
+        )}
 
         {/* Create Music Screen Overlay */}
         {showCreateScreen && (

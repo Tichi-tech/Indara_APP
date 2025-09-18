@@ -62,7 +62,7 @@ const ShareSongScreen: React.FC<ShareSongScreenProps> = ({
   const creatorInitial = creator.charAt(0).toUpperCase();
 
   return (
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Share Song">
+    <div className="absolute inset-0 z-50" role="dialog" aria-modal="true" aria-label="Share Song">
       {/* Background with blur effect */}
       <div
         ref={backdropRef}

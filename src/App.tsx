@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Pause, Play, SkipForward } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useSongs } from './hooks/useSongs';
@@ -162,6 +162,11 @@ function App() {
     setIsPlayerMinimized(false);
   };
 
+  const handleRefreshProfile = useCallback(() => {
+    // This will trigger useProfile hook to refresh when returning from edit
+    console.log('🔄 Refreshing profile data after edit...');
+  }, []);
+
   // --- Loading & Error ---
   if (isLoading || authLoading) {
     return (
@@ -313,6 +318,7 @@ function App() {
             onBack={() => setCurrentScreen('home')}
             onCreateMusic={() => setCurrentScreen('createMusic')}
             onAccountSettings={() => setCurrentScreen('accountSettings')}
+            onInbox={() => setCurrentScreen('notifications')}
             userSongs={songs}
             onPlaySong={handlePlaySong}
             userName={userName}
@@ -338,6 +344,7 @@ function App() {
             onViewProfile={() => setCurrentScreen('userProfile')}
             onEditProfile={() => setCurrentScreen('profile')}
             onNotifications={() => setCurrentScreen('notifications')}
+            refreshProfile={handleRefreshProfile}
           />
         );
       case 'profile':
@@ -394,7 +401,7 @@ function App() {
 
   return (
     <div className="mobile-container">
-      <StatusBar />
+      {currentScreen !== 'createMusic' && <StatusBar />}
       <div className="h-full overflow-hidden">
         {renderScreen()}
 

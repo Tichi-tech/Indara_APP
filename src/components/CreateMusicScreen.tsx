@@ -22,8 +22,8 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
   ];
 
   const meditationTags = [
-    'Mindfulness', 'Breathing', 'Body Scan', 'Loving Kindness', 'Chakra',
-    'Sleep Meditation', 'Stress Relief', 'Inner Peace', 'Gratitude'
+    'Mindfulness', 'Breathing', 'Body Scan',
+    'Sleep Meditation', 'Stress Relief', 'Inner Peace'
   ];
 
   const currentTags = activeTab === 'Music' ? musicTags : meditationTags;
@@ -108,52 +108,47 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
     ['z', 'x', 'c', 'v', 'b', 'n', 'm']
   ];
 
-  // Show navigation bar only in idle state without keyboard
-  const showNavigationBar = creationState === 'idle' && !showKeyboard;
-
   return (
     <div className="absolute inset-0 bg-white z-50 flex flex-col h-full">
-      {/* Header - Show in initial idle state */}
-      {showNavigationBar && (
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-            <Settings className="w-5 h-5 text-gray-600" />
-          </button>
-          
-          <div className="flex items-center gap-8">
-            <button
-              onClick={() => handleTabSwitch('Music')}
-              className={`text-lg font-medium pb-2 border-b-2 transition-colors ${
-                activeTab === 'Music'
-                  ? 'text-black border-black'
-                  : 'text-gray-400 border-transparent'
-              }`}
-            >
-              Music
-            </button>
-            <button
-              onClick={() => handleTabSwitch('Meditation')}
-              className={`text-lg font-medium pb-2 border-b-2 transition-colors ${
-                activeTab === 'Meditation'
-                  ? 'text-black border-black'
-                  : 'text-gray-400 border-transparent'
-              }`}
-            >
-              Meditation
-            </button>
-          </div>
-          
-          <button 
-            onClick={onClose}
-            className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center"
+      {/* Header - Always visible */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-100">
+        <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+          <Settings className="w-5 h-5 text-gray-600" />
+        </button>
+
+        <div className="flex items-center gap-8">
+          <button
+            onClick={() => handleTabSwitch('Music')}
+            className={`text-lg font-medium pb-2 border-b-2 transition-colors ${
+              activeTab === 'Music'
+                ? 'text-black border-black'
+                : 'text-gray-400 border-transparent'
+            }`}
           >
-            <X className="w-5 h-5 text-gray-600" />
+            Music
+          </button>
+          <button
+            onClick={() => handleTabSwitch('Meditation')}
+            className={`text-lg font-medium pb-2 border-b-2 transition-colors ${
+              activeTab === 'Meditation'
+                ? 'text-black border-black'
+                : 'text-gray-400 border-transparent'
+            }`}
+          >
+            Meditation
           </button>
         </div>
-      )}
+
+        <button
+          onClick={onClose}
+          className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center"
+        >
+          <X className="w-5 h-5 text-gray-600" />
+        </button>
+      </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden">
         {/* Text Input Area */}
         <div className="flex-1 p-6">
           <div className="w-full h-64 border-2 border-gray-300 rounded-3xl p-6 mb-6">
@@ -188,73 +183,19 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
                   <span className="text-white text-sm">♪</span>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  {/* First row */}
-                  <div className="flex gap-3 w-full">
-                    {currentTags.slice(0, 3).map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => handleTagClick(tag)}
-                        className={`px-6 py-3 rounded-full text-sm font-medium transition-colors flex-1 ${
-                          selectedTags.includes(tag)
-                            ? 'bg-black text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* Second row */}
-                  <div className="flex gap-3 w-full">
-                    {currentTags.slice(3, 5).map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => handleTagClick(tag)}
-                        className={`px-6 py-3 rounded-full text-sm font-medium transition-colors flex-1 ${
-                          selectedTags.includes(tag)
-                            ? 'bg-black text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* Third row */}
-                  <div className="flex gap-3 w-full">
-                    {currentTags.slice(5, 7).map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => handleTagClick(tag)}
-                        className={`px-6 py-3 rounded-full text-sm font-medium transition-colors flex-1 ${
-                          selectedTags.includes(tag)
-                            ? 'bg-black text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* Fourth row */}
-                  <div className="flex gap-3 w-full">
-                    {currentTags.slice(7, 9).map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => handleTagClick(tag)}
-                        className={`px-6 py-3 rounded-full text-sm font-medium transition-colors flex-1 ${
-                          selectedTags.includes(tag)
-                            ? 'bg-black text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
+                  {currentTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => handleTagClick(tag)}
+                      className={`px-4 py-3 rounded-full text-sm font-medium transition-colors ${
+                        selectedTags.includes(tag)
+                          ? 'bg-black text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -332,7 +273,7 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
         )}
 
         {/* Bottom Button */}
-        <div className="p-6">
+        <div className="px-6 py-4">
           {(creationState === 'idle' && showKeyboard) || (creationState === 'idle' && inputText.trim() && !showKeyboard) ? (
             <button
               onClick={handleCreate}

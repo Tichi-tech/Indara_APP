@@ -1,5 +1,6 @@
-import React from 'react';
-import { ArrowLeft, ChevronRight, User, Bell, Shield, HelpCircle, LogOut } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { ArrowLeft, ChevronRight, User, Bell, Shield, HelpCircle, LogOut, Crown } from 'lucide-react';
+import { useMyProfile } from '../hooks/useMyProfile';
 
 interface AccountSettingsScreenProps {
   onBack: () => void;
@@ -9,6 +10,7 @@ interface AccountSettingsScreenProps {
   onViewProfile: () => void;
   onEditProfile: () => void;
   onNotifications: () => void;
+  refreshProfile?: () => void;
 }
 
 const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
@@ -18,14 +20,34 @@ const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
   onLogout,
   onViewProfile,
   onEditProfile,
-  onNotifications
+  onNotifications,
+  refreshProfile
 }) => {
+  const {
+    getDisplayName,
+    getUserInitials,
+    getUsername
+  } = useMyProfile();
+
+  // Refresh profile data when returning from edit screen
+  useEffect(() => {
+    if (refreshProfile) {
+      refreshProfile();
+    }
+  }, [refreshProfile]);
   const settingsItems = [
     {
       icon: User,
       title: 'Edit Profile',
       subtitle: 'Update your personal information',
       onClick: onEditProfile
+    },
+    {
+      icon: Crown,
+      title: 'Subscription',
+      subtitle: 'Upgrade to Premium',
+      onClick: () => console.log('Subscription management'),
+      isSubscription: true
     },
     {
       icon: Bell,
@@ -70,12 +92,12 @@ const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
           >
             <div className="w-16 h-16 bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-400 rounded-full flex items-center justify-center">
               <span className="text-white text-xl font-bold">
-                {userName.charAt(0).toUpperCase()}
+                {getUserInitials()}
               </span>
             </div>
             <div className="flex-1 text-left">
-              <h2 className="text-lg font-semibold text-black">{userName}</h2>
-              <p className="text-gray-600">@{userHandle}</p>
+              <h2 className="text-lg font-semibold text-black">{getDisplayName()}</h2>
+              <p className="text-gray-600">@{getUsername() || userHandle}</p>
               <p className="text-sm text-purple-600 mt-1">View Profile</p>
             </div>
             <ChevronRight className="w-5 h-5 text-gray-400" />

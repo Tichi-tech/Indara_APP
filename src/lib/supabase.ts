@@ -241,20 +241,60 @@ export const auth = {
 
 // Database helpers
 export const db = {
-  // User profiles
+  // User profiles - Updated to match your backend schema
   getUserProfile: async (userId: string) => {
-    return await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
+    try {
+      return await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+    } catch (error) {
+      console.warn('Failed to fetch user profile:', error)
+      return { data: null, error }
+    }
   },
 
-  updateUserProfile: async (userId: string, updates: any) => {
-    return await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId)
+  updateUserProfile: async (userId: string, updates: { display_name?: string, avatar_url?: string, bio?: string, username?: string, phone?: string }) => {
+    try {
+      return await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('user_id', userId)
+    } catch (error) {
+      console.warn('Failed to update user profile:', error)
+      return { data: null, error }
+    }
+  },
+
+  // Subscription Management
+  getUserSubscription: async (userId: string) => {
+    try {
+      return await supabase
+        .from('user_subscriptions')
+        .select(`
+          *,
+          subscription_plans(*)
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .single()
+    } catch (error) {
+      console.warn('Failed to fetch user subscription:', error)
+      return { data: null, error }
+    }
+  },
+
+  getSubscriptionPlans: async () => {
+    try {
+      return await supabase
+        .from('subscription_plans')
+        .select('*')
+        .eq('is_active', true)
+    } catch (error) {
+      console.warn('Failed to fetch subscription plans:', error)
+      return { data: [], error }
+    }
   },
 
   // Songs/Music
@@ -331,6 +371,55 @@ export const db = {
       .from('likes')
       .select('count')
       .eq('song_id', songId)
+  },
+
+  // Follows
+  followUser: async (followerId: string, followingId: string) => {
+    try {
+      return await supabase
+        .from('follows')
+        .insert({ follower_id: followerId, following_id: followingId })
+    } catch (error) {
+      console.warn('Failed to follow user (table may not exist):', error)
+      return { data: null, error }
+    }
+  },
+
+  unfollowUser: async (followerId: string, followingId: string) => {
+    try {
+      return await supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', followerId)
+        .eq('following_id', followingId)
+    } catch (error) {
+      console.warn('Failed to unfollow user (table may not exist):', error)
+      return { data: null, error }
+    }
+  },
+
+  getUserFollowers: async (userId: string) => {
+    try {
+      return await supabase
+        .from('follows')
+        .select('follower_id')
+        .eq('following_id', userId)
+    } catch (error) {
+      console.warn('Failed to fetch followers (table may not exist):', error)
+      return { data: [], error: null }
+    }
+  },
+
+  getUserFollowing: async (userId: string) => {
+    try {
+      return await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', userId)
+    } catch (error) {
+      console.warn('Failed to fetch following (table may not exist):', error)
+      return { data: [], error: null }
+    }
   }
 }
 

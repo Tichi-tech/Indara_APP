@@ -1,5 +1,7 @@
 import React from 'react';
 import { ArrowLeft, Music, Heart, Users, Calendar } from 'lucide-react';
+import { useProfileStats } from '../hooks/useProfileStats';
+import { useMyProfile } from '../hooks/useMyProfile';
 
 interface UserProfileScreenProps {
   onBack: () => void;
@@ -12,11 +14,30 @@ const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   userName,
   userHandle
 }) => {
+  const { stats: profileStats, loading: statsLoading } = useProfileStats();
+  const { getDisplayName, getUserInitials, getUsername, getBio, getJoinedDate } = useMyProfile();
+
   const stats = [
-    { label: 'Tracks', value: '12', icon: Music },
-    { label: 'Likes', value: '248', icon: Heart },
-    { label: 'Followers', value: '89', icon: Users },
-    { label: 'Joined', value: 'Jan 2024', icon: Calendar }
+    {
+      label: 'Tracks',
+      value: statsLoading ? '...' : profileStats.tracksCount.toString(),
+      icon: Music
+    },
+    {
+      label: 'Likes',
+      value: statsLoading ? '...' : profileStats.likesCount.toString(),
+      icon: Heart
+    },
+    {
+      label: 'Followers',
+      value: statsLoading ? '...' : profileStats.followersCount.toString(),
+      icon: Users
+    },
+    {
+      label: 'Joined',
+      value: statsLoading ? '...' : (getJoinedDate() || profileStats.joinedDate),
+      icon: Calendar
+    }
   ];
 
   return (
@@ -38,11 +59,11 @@ const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
         <div className="p-6 text-center">
           <div className="w-24 h-24 bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-white text-2xl font-bold">
-              {userName.charAt(0).toUpperCase()}
+              {getUserInitials()}
             </span>
           </div>
-          <h2 className="text-xl font-semibold text-black">{userName}</h2>
-          <p className="text-gray-600">@{userHandle}</p>
+          <h2 className="text-xl font-semibold text-black">{getDisplayName()}</h2>
+          <p className="text-gray-600">@{getUsername() || userHandle}</p>
         </div>
 
         {/* Stats */}
@@ -64,8 +85,7 @@ const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
         <div className="px-6 mb-6">
           <h3 className="font-medium text-black mb-2">About</h3>
           <p className="text-gray-600 leading-relaxed">
-            Creating healing music to help others find peace and tranquility. 
-            Each track is crafted with intention and love. 🎵✨
+            {getBio() || 'Creating healing music to help others find peace and tranquility. Each track is crafted with intention and love. 🎵✨'}
           </p>
         </div>
 

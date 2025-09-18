@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Camera, User, Phone, AtSign } from 'lucide-react';
+import { useMyProfile } from '../hooks/useMyProfile';
 
 interface ProfileScreenProps {
   onBack: () => void;
@@ -16,25 +17,75 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
   phoneNumber,
   onSave
 }) => {
-  const [name, setName] = useState(userName);
-  const [handle, setHandle] = useState(userHandle);
-  const [phone, setPhone] = useState(phoneNumber);
-  const [loading, setSaving] = useState(false);
+  const {
+    profile,
+    getDisplayName,
+    getUsername,
+    getPhone,
+    getBio,
+    updateProfile
+  } = useMyProfile();
+
+  const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
+  const [phone, setPhone] = useState('');
+  const [bio, setBio] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Load profile data from unified hook
+  useEffect(() => {
+    if (profile) {
+      console.log('🔍 Loading profile data from useMyProfile hook...');
+      setDisplayName(profile.display_name || userName || '');
+      setUsername(profile.username || userHandle || '');
+      setPhone(profile.phone || phoneNumber || '');
+      setBio(profile.bio || '');
+    } else {
+      // No profile data, use fallbacks
+      setDisplayName(userName || '');
+      setUsername(userHandle || '');
+      setPhone(phoneNumber || '');
+      setBio('');
+    }
+  }, [profile, userName, userHandle, phoneNumber]);
 
   const handleSave = async () => {
-    if (!name.trim() || !handle.trim()) return;
-    
+    if (!displayName.trim()) return;
+
     setSaving(true);
-    
-    // Simulate saving
-    setTimeout(() => {
-      onSave(name.trim(), handle.trim(), phone.trim());
-      setSaving(false);
+    try {
+      console.log('💾 Saving profile data with useMyProfile...');
+
+      const result = await updateProfile({
+        display_name: displayName.trim(),
+        username: username.trim() || null,
+        phone: phone.trim() || null,
+        bio: bio.trim() || null
+      });
+
+      if (result.success) {
+        console.log('✅ Profile updated successfully');
+      } else {
+        console.error('❌ Failed to update profile:', result.error);
+      }
+
+      // Update local state for backward compatibility
+      onSave(displayName, username, phone);
       onBack();
-    }, 1000);
+    } catch (error) {
+      console.error('❌ Error saving profile:', error);
+      // Fallback to local state update
+      onSave(displayName, username, phone);
+      onBack();
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const hasChanges = name !== userName || handle !== userHandle || phone !== phoneNumber;
+  const hasChanges = displayName !== (userName || '') ||
+                    username !== (userHandle || '') ||
+                    phone !== (phoneNumber || '') ||
+                    bio !== '';
 
   return (
     <div className="h-full bg-white flex flex-col">
@@ -49,10 +100,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <h1 className="text-lg font-semibold text-black">Edit Profile</h1>
         <button
           onClick={handleSave}
-          disabled={loading || !hasChanges}
+          disabled={saving || !hasChanges}
           className="px-4 py-2 bg-black text-white rounded-full text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? 'Saving...' : 'Save'}
+          {saving ? 'Saving...' : 'Save'}
         </button>
       </div>
 
@@ -62,7 +113,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <div className="relative inline-block">
             <div className="w-24 h-24 bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-400 rounded-full flex items-center justify-center">
               <span className="text-white text-2xl font-bold">
-                {name.charAt(0).toUpperCase()}
+                {displayName.charAt(0).toUpperCase()}
               </span>
             </div>
             <button className="absolute bottom-0 right-0 w-8 h-8 bg-black rounded-full flex items-center justify-center shadow-lg">
@@ -81,8 +132,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </label>
             <input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Enter your full name"
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
               maxLength={50}
@@ -96,8 +147,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </label>
             <input
               type="text"
-              value={handle}
-              onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
               placeholder="Enter your username"
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
               maxLength={30}
@@ -119,6 +170,23 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
               placeholder="Enter your phone number"
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Bio
+            </label>
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="Tell us about yourself..."
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent resize-none"
+              rows={3}
+              maxLength={200}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {bio.length}/200 characters
+            </p>
           </div>
         </div>
 
