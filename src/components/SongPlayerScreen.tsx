@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Play, Share2, ThumbsUp, ChevronDown, RotateCcw } from 'lucide-react';
 import ShareSongScreen from './ShareSongScreen';
+import { useGlobalAudio } from '../hooks/useMusicPlayer';
+import { getSmartThumbnail } from '../utils/thumbnailMatcher';
 
 interface Song {
   id: string;
@@ -25,77 +27,49 @@ interface SongPlayerScreenProps {
 }
 
 const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onShareToHealing: _onShareToHealing }) => {
-  // Basic audio element to make play/pause “real”
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const {
+    currentTrack,
+    isPlaying,
+    currentTime,
+    duration,
+    play,
+    pause,
+    resume,
+    seek,
+    formatTime
+  } = useGlobalAudio();
 
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [currentTime, setCurrentTime] = useState(0);
-  // keep your default duration fallback (2:59) if we can’t read metadata
-  const [duration, setDuration] = useState(179);
   const [isLiked, setIsLiked] = useState<boolean>(song.isLiked || false);
   const [likes, setLikes] = useState<number>(2100);
   const [showShareScreen, setShowShareScreen] = useState(false);
 
-  // If you have a real song URL, put it here. For demo, use a placeholder or song.image/audio field.
-  const AUDIO_URL =
-    (song as any).audioUrl ||
-    'https://cdn.pixabay.com/download/audio/2021/11/30/audio_4f3a9e4be3.mp3?filename=relaxing-ambient-110997.mp3';
-
-  // Audio event wiring
+  // Auto-play the song when component mounts if it's not already playing
   useEffect(() => {
-    if (!audioRef.current) return;
-
-    const audio = audioRef.current;
-    const onLoaded = () => {
-      // prefer real duration
-      if (!Number.isNaN(audio.duration) && audio.duration !== Infinity) {
-        setDuration(Math.floor(audio.duration));
-      }
-      if (isPlaying) audio.play().catch(() => {});
-    };
-    const onTime = () => setCurrentTime(Math.floor(audio.currentTime));
-    const onEnd = () => setIsPlaying(false);
-
-    audio.addEventListener('loadedmetadata', onLoaded);
-    audio.addEventListener('timeupdate', onTime);
-    audio.addEventListener('ended', onEnd);
-
-    // autoplay on mount if allowed
-    if (isPlaying) audio.play().catch(() => {});
-
-    return () => {
-      audio.removeEventListener('loadedmetadata', onLoaded);
-      audio.removeEventListener('timeupdate', onTime);
-      audio.removeEventListener('ended', onEnd);
-    };
-  }, [isPlaying]);
-
-  // Keep audio element state in sync with isPlaying / currentTime
-  useEffect(() => {
-    if (!audioRef.current) return;
-    const audio = audioRef.current;
-    if (isPlaying) {
-      audio.play().catch(() => {});
-    } else {
-      audio.pause();
+    if (!currentTrack || currentTrack.id !== song.id) {
+      const track = {
+        id: song.id,
+        title: song.title,
+        artist: song.creator,
+        audio_url: (song as any).audioUrl || (song as any).audio_url || 'https://cdn.pixabay.com/download/audio/2021/11/30/audio_4f3a9e4be3.mp3?filename=relaxing-ambient-110997.mp3',
+        thumbnail_url: song.image,
+        type: 'music' as const
+      };
+      play(track);
     }
-  }, [isPlaying]);
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  }, [song.id, currentTrack?.id, play]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = parseInt(e.target.value, 10);
-    setCurrentTime(newTime);
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-    }
+    seek(newTime);
   };
 
-  const handlePlayPause = () => setIsPlaying(prev => !prev);
+  const handlePlayPause = () => {
+    if (isPlaying) {
+      pause();
+    } else {
+      resume();
+    }
+  };
 
   const handleLike = () => {
     setIsLiked(prev => !prev);
@@ -121,7 +95,14 @@ const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onSha
     setShowShareScreen(false);
   };
 
-  const progress = (currentTime / Math.max(1, duration)) * 100;
+  const handleRestart = () => {
+    seek(0);
+    if (!isPlaying) {
+      resume();
+    }
+  };
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   if (showShareScreen) {
     return (
@@ -137,14 +118,16 @@ const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onSha
 
   return (
     <div className="h-full relative overflow-hidden">
-      {/* Hidden audio element */}
-      <audio ref={audioRef} src={AUDIO_URL} preload="metadata" />
-
       {/* Full Screen Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `url(${song.image || 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=800'})`,
+          backgroundImage: `url(${song.image || getSmartThumbnail(
+            song.title || 'Generated music',
+            song.description || '',
+            song.tags || '',
+            song.id
+          )})`,
         }}
       >
         {/* Gradient Overlay */}
@@ -218,16 +201,10 @@ const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onSha
           <div className="space-y-6">
             {/* Progress Bar and Controls */}
             <div className="flex items-center gap-4">
-              {/* Repeat Button */}
+              {/* Restart Button */}
               <button
                 className="p-2"
-                onClick={() => {
-                  if (audioRef.current) {
-                    audioRef.current.currentTime = 0;
-                    setCurrentTime(0);
-                    if (!isPlaying) setIsPlaying(true);
-                  }
-                }}
+                onClick={handleRestart}
                 aria-label="Restart"
               >
                 <RotateCcw className="w-6 h-6 text-white" />
@@ -250,8 +227,8 @@ const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onSha
                 <input
                   type="range"
                   min={0}
-                  max={Math.max(1, duration)}
-                  value={currentTime}
+                  max={Math.max(1, Math.floor(duration))}
+                  value={Math.floor(currentTime)}
                   onChange={handleSeek}
                   className="slider w-full h-1 bg-white/30 rounded-lg appearance-none cursor-pointer"
                   style={{

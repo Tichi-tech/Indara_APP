@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowLeft, X, Play, ChevronRight } from 'lucide-react';
 import BottomNav from './BottomNav';
+import { getSmartThumbnail } from '../utils/thumbnailMatcher';
 
 interface Song {
   id: string;
@@ -27,49 +28,49 @@ const HealingMusicPlaylist: React.FC<HealingMusicPlaylistProps> = ({
       id: '1',
       title: 'Calm music',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Calm music', 'peaceful healing meditation', 'healing calm', '1'),
     },
     {
       id: '2',
       title: 'Relax music',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Relax music', 'relaxing ambient meditation', 'healing relax', '2'),
     },
     {
       id: '3',
       title: 'Soothing music',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Soothing music', 'gentle healing sounds', 'healing soothing', '3'),
     },
     {
       id: '4',
       title: 'Relax music',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Relax music', 'relaxing ambient meditation', 'healing relax', '4'),
     },
     {
       id: '5',
       title: 'Relax music',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Relax music', 'relaxing ambient meditation', 'healing relax', '5'),
     },
     {
       id: '6',
       title: 'Soothing music',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Soothing music', 'gentle healing sounds', 'healing soothing', '6'),
     },
     {
       id: '7',
       title: 'Relax music',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Relax music', 'relaxing ambient meditation', 'healing relax', '7'),
     },
     {
       id: '8',
       title: 'Relax music',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Relax music', 'relaxing ambient meditation', 'healing relax', '8'),
     },
   ];
 
@@ -90,7 +91,7 @@ const HealingMusicPlaylist: React.FC<HealingMusicPlaylistProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto pb-[120px] [padding-bottom:calc(env(safe-area-inset-bottom)+120px)] bg-white">
+        <main className="flex-1 overflow-y-auto pb-[180px] [padding-bottom:calc(env(safe-area-inset-bottom)+180px)] bg-white">
           <div className="px-6 py-4">
             <div className="space-y-4">
               {healingMusicTracks.map((track) => (

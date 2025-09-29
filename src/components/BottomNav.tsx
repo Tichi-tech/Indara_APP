@@ -32,7 +32,7 @@ const BottomNav: React.FC<BottomNavProps> = ({
 
   return (
     <nav
-      className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] bg-white border-t border-gray-100 [padding-bottom:env(safe-area-inset-bottom)] ${className}`}
+      className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] bg-white border-t border-gray-100 [padding-bottom:env(safe-area-inset-bottom)] z-50 ${className}`}
       role="navigation"
       aria-label="Bottom"
     >

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowLeft, X, Play, ChevronRight } from 'lucide-react';
 import BottomNav from './BottomNav';
+import { getSmartThumbnail } from '../utils/thumbnailMatcher';
 
 interface Song {
   id: string;
@@ -27,49 +28,49 @@ const MeditationPlaylist: React.FC<MeditationPlaylistProps> = ({
       id: '1',
       title: 'Morning Meditation',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Morning Meditation', 'peaceful morning mindfulness', 'meditation morning', '1'),
     },
     {
       id: '2',
-      title: 'Morning Meditation',
+      title: 'Breathing Focus',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Breathing Focus', 'deep breathing meditation', 'meditation breathing', '2'),
     },
     {
       id: '3',
-      title: 'Morning Meditation',
+      title: 'Body Scan',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Body Scan', 'relaxing body awareness', 'meditation body', '3'),
     },
     {
       id: '4',
-      title: 'Morning Meditation',
+      title: 'Stress Relief',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Stress Relief', 'calming stress meditation', 'meditation stress', '4'),
     },
     {
       id: '5',
-      title: 'Morning Meditation',
+      title: 'Inner Peace',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Inner Peace', 'tranquil peace meditation', 'meditation peace', '5'),
     },
     {
       id: '6',
-      title: 'Morning Meditation',
+      title: 'Mindful Awareness',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Mindful Awareness', 'present moment meditation', 'meditation mindful', '6'),
     },
     {
       id: '7',
-      title: 'Morning Meditation',
+      title: 'Sleep Meditation',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Sleep Meditation', 'restful sleep preparation', 'meditation sleep', '7'),
     },
     {
       id: '8',
-      title: 'Morning Meditation',
+      title: 'Loving Kindness',
       duration: '4 min',
-      image: 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Loving Kindness', 'compassion meditation practice', 'meditation love', '8'),
     },
   ];
 
@@ -90,7 +91,7 @@ const MeditationPlaylist: React.FC<MeditationPlaylistProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto pb-[120px] [padding-bottom:calc(env(safe-area-inset-bottom)+120px)] bg-white">
+        <main className="flex-1 overflow-y-auto pb-[180px] [padding-bottom:calc(env(safe-area-inset-bottom)+180px)] bg-white">
           <div className="px-6 py-4">
             <div className="space-y-4">
               {meditationTracks.map((track) => (

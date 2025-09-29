@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { X, Instagram } from 'lucide-react';
+import { getSmartThumbnail } from '../utils/thumbnailMatcher';
 
 interface Song {
   id: string;
@@ -50,11 +51,21 @@ const ShareSongScreen: React.FC<ShareSongScreenProps> = ({
 
   const coverImage =
     song.image ||
-    'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800';
+    getSmartThumbnail(
+      song.title || 'Generated music content',
+      song.description || '',
+      song.tags || '',
+      song.id
+    );
 
   const bgImage =
     song.image ||
-    'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=800';
+    getSmartThumbnail(
+      song.title || 'Generated music content',
+      song.description || '',
+      song.tags || '',
+      song.id
+    );
 
   const title = song.title?.trim() || 'Generated music content';
   const desc = song.description?.trim() || 'user prompt summary';

@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useMusicPlayer } from '../hooks/useMusicPlayer';
 import { useRealtimeUpdates } from '../hooks/useRealtimeUpdates';
 import { useNotifications } from '../hooks/useNotifications';
+import { getSmartThumbnail } from '../utils/thumbnailMatcher';
 
 interface Song {
   id: string;
@@ -71,7 +72,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const [likingTracks, setLikingTracks] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
-  // Sample data
+  // Sample data with smart thumbnails
   const musicTracks: Song[] = [
     {
       id: 'h1',
@@ -80,8 +81,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       tags: 'piano, nature, morning',
       plays: 1200,
       likes: 89,
-      image:
-        'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Peaceful Morning', 'Gentle piano with nature sounds', 'piano, nature, morning', 'h1'),
       version: '1.0',
       isPublic: true,
       createdAt: '2024-01-15',
@@ -95,8 +95,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       tags: 'ambient, meditation, lofi',
       plays: 2800,
       likes: 156,
-      image:
-        'https://images.pexels.com/photos/167491/pexels-photo-167491.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Deep Meditation', 'Lo-fi sounds with ambient', 'ambient, meditation, lofi', 'h2'),
       version: '1.0',
       isPublic: true,
       createdAt: '2024-01-14',
@@ -110,8 +109,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       tags: 'nature, ocean, relaxation',
       plays: 3200,
       likes: 201,
-      image:
-        'https://images.pexels.com/photos/1496373/pexels-photo-1496373.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Ocean Waves', 'Natural ocean sounds for relaxation', 'nature, ocean, relaxation', 'h3'),
       version: '1.0',
       isPublic: true,
       createdAt: '2024-01-13',
@@ -125,8 +123,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       tags: 'forest, nature, ambient',
       plays: 1800,
       likes: 134,
-      image:
-        'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Forest Whispers', 'Gentle forest ambience', 'forest, nature, ambient', 'h4'),
       version: '1.0',
       isPublic: true,
       createdAt: '2024-01-12',
@@ -143,8 +140,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       tags: 'breathing, mindfulness, guided',
       plays: 4200,
       likes: 312,
-      image:
-        'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Mindful Breathing', 'Guided breathing meditation for beginners', 'breathing, mindfulness, guided', 'm1'),
       version: '1.0',
       isPublic: true,
       createdAt: '2024-01-16',
@@ -158,8 +154,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       tags: 'body scan, relaxation, progressive',
       plays: 3600,
       likes: 278,
-      image:
-        'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Body Scan Relaxation', 'Progressive muscle relaxation technique', 'body scan, relaxation, progressive', 'm2'),
       version: '1.0',
       isPublic: true,
       createdAt: '2024-01-15',
@@ -173,8 +168,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       tags: 'chakra, healing, frequencies',
       plays: 2900,
       likes: 189,
-      image:
-        'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Chakra Alignment', 'Healing frequencies for chakra balancing', 'chakra, healing, frequencies', 'm3'),
       version: '1.0',
       isPublic: true,
       createdAt: '2024-01-14',
@@ -188,8 +182,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       tags: 'sleep, bedtime, gentle',
       plays: 5100,
       likes: 423,
-      image:
-        'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: getSmartThumbnail('Sleep Meditation', 'Gentle meditation to help you fall asleep', 'sleep, bedtime, gentle', 'm4'),
       version: '1.0',
       isPublic: true,
       createdAt: '2024-01-13',
@@ -214,7 +207,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             tags: track.style || '',
             plays: Math.floor(Math.random() * 1000), // Random until we have real play counts
             likes: Math.floor(Math.random() * 100),  // Random until we have real like counts
-            image: track.thumbnail_url || 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+            image: track.thumbnail_url || getSmartThumbnail(
+              track.title || 'Untitled',
+              track.prompt || '',
+              track.style || '',
+              track.id
+            ),
             version: '1.0',
             isPublic: true,
             createdAt: track.created_at,
@@ -313,7 +311,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       tags: track.style || '',
       plays: 0, // New track starts with 0 plays
       likes: 0, // New track starts with 0 likes
-      image: track.thumbnail_url || 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: track.thumbnail_url || getSmartThumbnail(
+        track.title || 'Untitled',
+        track.prompt || '',
+        track.style || '',
+        track.id
+      ),
       version: '1.0',
       isPublic: true,
       createdAt: track.created_at,
@@ -339,8 +342,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       id: '1',
       title: 'Decreasing Anxiety',
       description: 'Calming sounds to reduce stress and anxiety',
-      image:
-        'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: '/thumbnails/relax/relax-calm.png',
       creator: 'Healing Sounds',
       plays: 23400,
       likes: 23400,
@@ -350,56 +352,51 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       id: '2',
       title: 'Sleep Soothing',
       description: 'Gentle melodies for peaceful sleep',
-      image:
-        'https://images.pexels.com/photos/1496373/pexels-photo-1496373.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: '/thumbnails/sleep/sleep-soothing.png',
       creator: 'Dream Therapy',
-      plays: 23400,
-      likes: 23400,
+      plays: 18500,
+      likes: 15200,
       trackCount: 18,
     },
     {
       id: '3',
-      title: 'Shifting Your Mood',
-      description: 'Calming sounds to reduce stress and anxiety',
-      image:
-        'https://images.pexels.com/photos/167491/pexels-photo-167491.jpeg?auto=compress&cs=tinysrgb&w=400',
-      creator: 'Mood Lifters',
-      plays: 23400,
-      likes: 23400,
+      title: 'Yoga',
+      description: 'Mindful movements and relaxing soundscapes',
+      image: '/thumbnails/yoga/Yoga-relax.png',
+      creator: 'Zen Flow',
+      plays: 12800,
+      likes: 9400,
       trackCount: 15,
     },
     {
       id: '4',
-      title: 'Focusing',
-      description: 'Calming sounds to reduce stress and anxiety',
-      image:
-        'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
-      creator: 'Focus Flow',
-      plays: 23400,
-      likes: 23400,
-      trackCount: 20,
-    },
-    {
-      id: '5',
       title: 'Baby Setting',
       description: 'Gentle lullabies for babies and toddlers',
-      image:
-        'https://images.pexels.com/photos/1496373/pexels-photo-1496373.jpeg?auto=compress&cs=tinysrgb&w=400',
+      image: '/thumbnails/babysetting/babysetting.png',
       creator: 'Baby Dreams',
-      plays: 23400,
-      likes: 23400,
+      plays: 31200,
+      likes: 28600,
       trackCount: 25,
     },
     {
+      id: '5',
+      title: 'Meditation',
+      description: 'Deep meditation sessions for inner peace',
+      image: '/thumbnails/meditation/Meditation-clam.png',
+      creator: 'Mindful Space',
+      plays: 16700,
+      likes: 13900,
+      trackCount: 20,
+    },
+    {
       id: '6',
-      title: 'Ambient',
-      description: 'Atmospheric sounds for deep relaxation',
-      image:
-        'https://images.pexels.com/photos/167491/pexels-photo-167491.jpeg?auto=compress&cs=tinysrgb&w=400',
-      creator: 'Ambient Space',
-      plays: 23400,
-      likes: 23400,
-      trackCount: 30,
+      title: 'Focusing',
+      description: 'Enhanced concentration and productivity sounds',
+      image: '/thumbnails/study/study-focus.png',
+      creator: 'Focus Flow',
+      plays: 21300,
+      likes: 17800,
+      trackCount: 22,
     },
   ];
 
@@ -436,7 +433,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto pb-[120px] [padding-bottom:calc(env(safe-area-inset-bottom)+120px)]">
+        <main className="flex-1 overflow-y-auto pb-[180px] [padding-bottom:calc(env(safe-area-inset-bottom)+180px)]">
           {/* Healing Community */}
           <section className="mb-8">
             <div className="flex items-center justify-between px-6 mb-4">

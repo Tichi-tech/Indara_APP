@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './useAuth'
 import { musicApi } from '../lib/supabase'
+import { getSmartThumbnail } from '../utils/thumbnailMatcher'
 
 export interface Song {
   id: string;
@@ -52,7 +53,12 @@ export function useSongs() {
           tags: song.style || '',
           plays: 0,
           likes: 0,
-          image: 'https://images.pexels.com/photos/1763075/pexels-photo-1763075.jpeg',
+          image: song.thumbnail_url || getSmartThumbnail(
+            song.title || 'Untitled',
+            song.prompt || '',
+            song.style || '',
+            song.id
+          ),
           version: 'v1.0',
           isPublic: song.is_featured || false,
           createdAt: song.created_at,
@@ -88,7 +94,12 @@ export function useSongs() {
           tags: song.style || '',
           plays: Math.floor(Math.random() * 1000),
           likes: Math.floor(Math.random() * 100),
-          image: 'https://images.pexels.com/photos/1763075/pexels-photo-1763075.jpeg',
+          image: song.thumbnail_url || getSmartThumbnail(
+            song.title || 'Untitled',
+            song.prompt || '',
+            song.style || '',
+            song.id
+          ),
           version: 'v1.0',
           isPublic: true,
           createdAt: song.created_at,
@@ -133,7 +144,7 @@ export function useSongs() {
         status: 'completed'
       }
 
-      const { data, error } = await db.createSong(dbSongData)
+      const { data, error } = await musicApi.createSong(dbSongData)
       
       if (error) {
         console.warn('Database save failed, using local storage:', error)

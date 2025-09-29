@@ -5,6 +5,7 @@ import CreateMusicScreen from './CreateMusicScreen';
 import { musicApi } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useMusicPlayer } from '../hooks/useMusicPlayer';
+import { getSmartThumbnail } from '../utils/thumbnailMatcher';
 
 interface Song {
   id: string;
@@ -67,7 +68,12 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
             tags: track.style || '',
             plays: Math.floor(Math.random() * 1000),
             likes: Math.floor(Math.random() * 100),
-            image: track.thumbnail_url || 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400',
+            image: track.thumbnail_url || getSmartThumbnail(
+              track.title || 'Untitled',
+              track.prompt || track.admin_notes || '',
+              track.style || '',
+              track.id
+            ),
             version: '1.0',
             isPublic: true,
             createdAt: track.created_at,
@@ -174,7 +180,7 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto pb-[120px] [padding-bottom:calc(env(safe-area-inset-bottom)+120px)] bg-white">
+        <main className="flex-1 overflow-y-auto pb-[180px] [padding-bottom:calc(env(safe-area-inset-bottom)+180px)] bg-white">
           {/* Playlists Section */}
           <div className="px-6 mb-8">
             <div className="flex items-center justify-between mb-6">

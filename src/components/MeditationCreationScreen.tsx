@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Settings, Leaf, MessageCircle, Sparkles } from 'lucide-react';
 import { musicApi } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { getSmartThumbnail } from '../utils/thumbnailMatcher';
 
 interface MeditationCreationScreenProps {
   onClose: () => void;
@@ -108,7 +109,12 @@ const MeditationCreationScreen: React.FC<MeditationCreationScreenProps> = ({
           id: data.id || Date.now().toString(),
           title: `Meditation Session - ${selectedTags.join(', ') || 'Custom'}`,
           description: sessionDescription,
-          image: 'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=400',
+          image: getSmartThumbnail(
+            `Meditation Session - ${selectedTags.join(', ') || 'Custom'}`,
+            sessionDescription,
+            `meditation ${selectedTags.join(' ')}`,
+            data.id || Date.now().toString()
+          ),
           audio_url: data.audio_url,
           duration: `${Math.floor(selectedDuration / 60)}:${(selectedDuration % 60).toString().padStart(2, '0')}`,
           creator: 'Meditation Guide',

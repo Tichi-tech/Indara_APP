@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Pause, Play, SkipForward } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useSongs } from './hooks/useSongs';
+import { AudioProvider } from './hooks/useMusicPlayer';
+import GlobalAudioPlayer from './components/GlobalAudioPlayer';
 
 import WelcomeScreen from './components/WelcomeScreen';
 import SignInScreen from './components/SignInScreen';
@@ -106,9 +107,6 @@ function App() {
   const [userHandle, setUserHandle] = useState('samleeee');
   const [phoneNumber, setPhoneNumber] = useState('+1 650-213-7379');
   const [isSignInFlow, setIsSignInFlow] = useState(false);
-  const [currentlyPlaying, setCurrentlyPlaying] = useState<Song | null>(null);
-  const [isPlayerMinimized, setIsPlayerMinimized] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [selectedPlaylist, setSelectedPlaylist] = useState<{name: string; description?: string} | null>(null);
 
@@ -158,15 +156,11 @@ function App() {
 
   // --- Player handlers ---
   const handlePlaySong = (song: Song) => {
-    setCurrentlyPlaying(song);
     setCurrentSong(song);
-    setIsPlaying(true);
-    setIsPlayerMinimized(false);
     setCurrentScreen('songPlayer');
   };
 
   const handleMinimizePlayer = () => {
-    setIsPlayerMinimized(true);
     setCurrentScreen('home');
   };
 
@@ -174,13 +168,10 @@ function App() {
     signOut();
     setCurrentScreen('welcome');
     setCurrentSong(null);
-    setCurrentlyPlaying(null);
-    setIsPlayerMinimized(false);
   };
 
   const handleRefreshProfile = useCallback(() => {
     // This will trigger useProfile hook to refresh when returning from edit
-    console.log('🔄 Refreshing profile data after edit...');
   }, []);
 
   // --- Loading & Error ---
@@ -291,15 +282,12 @@ function App() {
         return (
           <HomeScreen
             onCreateMusic={() => {
-              console.log('🎵 Create Music clicked');
               setCurrentScreen('createMusic');
             }}
             onMySongs={() => {
-              console.log('📚 Library clicked');
               setCurrentScreen('mySongs');
             }}
             onAccountSettings={() => {
-              console.log('⚙️ Account Settings clicked');
               setCurrentScreen('accountSettings');
             }}
             userName={userName}
@@ -308,20 +296,16 @@ function App() {
             onPlaySong={handlePlaySong}
             onNameEntry={() => setCurrentScreen('nameEntry')}
             onHealingMusicPlaylist={() => {
-              console.log('🎶 Healing Music Playlist clicked');
               setCurrentScreen('healingMusicPlaylist');
             }}
             onMeditationPlaylist={() => {
-              console.log('🧘 Meditation Playlist clicked');
               setCurrentScreen('meditationPlaylist');
             }}
             onPlaylist={(playlistName: string, playlistDescription?: string) => {
-              console.log('🎵 Featured Playlist clicked:', playlistName);
               setSelectedPlaylist({ name: playlistName, description: playlistDescription });
               setCurrentScreen('playlist');
             }}
             onInbox={() => {
-              console.log('📥 Inbox clicked');
               setCurrentScreen('notifications');
             }}
           />
@@ -453,7 +437,6 @@ function App() {
             onAccountSettings={() => setCurrentScreen('accountSettings')}
             onInbox={() => setCurrentScreen('notifications')}
             onStartSession={(sessionType, duration) => {
-              console.log('Starting meditation session:', sessionType, duration);
               // Could navigate to a meditation session screen or start inline
             }}
           />
@@ -477,61 +460,18 @@ function App() {
   };
 
   return (
-    <div className="mobile-container">
-      {currentScreen !== 'createMusic' && <StatusBar />}
-      <div className="h-full overflow-hidden">
-        {renderScreen()}
+    <AudioProvider>
+      <div className="mobile-container">
+        {currentScreen !== 'createMusic' && <StatusBar />}
+        <div className="h-full overflow-hidden relative">
+          {renderScreen()}
 
-        {/* Mini Player - Always on top when music is playing and minimized */}
-        {currentlyPlaying && isPlayerMinimized && (
-          <div className="fixed bottom-16 left-0 right-0 bg-white shadow-lg border-t z-40 mx-auto max-w-[375px]">
-            <div className="flex items-center gap-3 p-3">
-              <img
-                src={currentlyPlaying.image}
-                alt={currentlyPlaying.title}
-                className="w-12 h-12 rounded-lg object-cover"
-              />
-              <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-black text-sm truncate">
-                  {currentlyPlaying.title}
-                </h4>
-                <p className="text-gray-600 text-xs truncate">{currentlyPlaying.creator}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className="w-10 h-10 bg-black rounded-full flex items-center justify-center"
-                >
-                  {isPlaying ? (
-                    <Pause className="w-5 h-5 text-white" />
-                  ) : (
-                    <Play className="w-5 h-5 text-white ml-0.5" />
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    setCurrentSong(currentlyPlaying);
-                    setIsPlayerMinimized(false);
-                    setCurrentScreen('songPlayer');
-                  }}
-                  className="w-8 h-8 flex items-center justify-center"
-                >
-                  <SkipForward className="w-4 h-4 text-gray-600" />
-                </button>
-              </div>
-            </div>
+          {/* Global Audio Player - replaces mini player */}
+          <GlobalAudioPlayer />
 
-            {/* Mini Progress Bar */}
-            <div className="px-3 pb-2">
-              <div className="w-full bg-gray-200 rounded-full h-1">
-                <div className="w-1/4 bg-black rounded-full h-1"></div>
-              </div>
-            </div>
-          </div>
-        )}
-
+        </div>
       </div>
-    </div>
+    </AudioProvider>
   );
 }
 

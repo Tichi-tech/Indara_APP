@@ -4,6 +4,7 @@ import { useUserAnalytics } from '../hooks/useUserAnalytics';
 import { useAuth } from '../hooks/useAuth';
 import { isAdminUser } from '../lib/supabase';
 import BottomNav from './BottomNav';
+import { getSmartThumbnail } from '../utils/thumbnailMatcher';
 
 interface AnalyticsDashboardProps {
   onBack: () => void;
@@ -154,7 +155,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto pb-[120px] [padding-bottom:calc(env(safe-area-inset-bottom)+120px)]">
+        <main className="flex-1 overflow-y-auto pb-[180px] [padding-bottom:calc(env(safe-area-inset-bottom)+180px)]">
           {error && (
             <div className="px-6 py-4">
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -256,7 +257,12 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                           <span className="text-white text-sm font-bold">#{index + 1}</span>
                         </div>
                         <img
-                          src={track.thumbnail_url || 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                          src={track.thumbnail_url || getSmartThumbnail(
+                            track.title || 'Untitled',
+                            track.prompt || track.admin_notes || '',
+                            track.style || '',
+                            track.id
+                          )}
                           alt={track.title}
                           className="w-12 h-12 rounded-lg object-cover"
                         />

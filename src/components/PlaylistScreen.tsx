@@ -4,6 +4,7 @@ import BottomNav from './BottomNav';
 import { musicApi } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useMusicPlayer } from '../hooks/useMusicPlayer';
+import { getSmartThumbnail } from '../utils/thumbnailMatcher';
 
 interface Track {
   id: string;
@@ -153,7 +154,7 @@ const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto pb-[120px] [padding-bottom:calc(env(safe-area-inset-bottom)+120px)] bg-white">
+        <main className="flex-1 overflow-y-auto pb-[180px] [padding-bottom:calc(env(safe-area-inset-bottom)+180px)] bg-white">
           {/* Loading State */}
           {loading && (
             <div className="flex items-center justify-center py-12">
@@ -171,7 +172,12 @@ const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                     {/* Track Image */}
                     <div className="relative">
                       <img
-                        src={track.thumbnail_url || 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                        src={track.thumbnail_url || getSmartThumbnail(
+                          track.title || 'Untitled',
+                          track.prompt || track.admin_notes || '',
+                          track.style || '',
+                          track.id
+                        )}
                         alt={track.title}
                         className="w-16 h-16 rounded-2xl object-cover"
                       />

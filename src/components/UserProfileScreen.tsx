@@ -5,6 +5,7 @@ import { useMyProfile } from '../hooks/useMyProfile';
 import { useUserAnalytics } from '../hooks/useUserAnalytics';
 import { useAuth } from '../hooks/useAuth';
 import { isAdminUser } from '../lib/supabase';
+import { getSmartThumbnail } from '../utils/thumbnailMatcher';
 
 interface UserProfileScreenProps {
   onBack: () => void;
@@ -176,7 +177,12 @@ const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
                     </p>
                   </div>
                   <img
-                    src={track.thumbnail_url || 'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                    src={track.thumbnail_url || getSmartThumbnail(
+                      track.title || 'Untitled',
+                      track.prompt || track.admin_notes || '',
+                      track.style || '',
+                      track.id
+                    )}
                     alt={track.title}
                     className="w-10 h-10 rounded-lg object-cover"
                   />

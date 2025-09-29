@@ -72,7 +72,7 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: `Hi! I'm your AI music composer. I can help you create personalized ${activeTab.toLowerCase()}. Just tell me what kind of mood, style, or feeling you want, and I'll compose something unique for you. What would you like to create today?`,
+      text: `Hi! I'm Dara, your music therapist. I'm here to listen and help you find inner peace through personalized healing music. How are you feeling today?`,
       isUser: false,
       timestamp: new Date()
     }
@@ -102,8 +102,8 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
     setMessages([{
       id: '1',
       text: activeTab === 'Music'
-        ? `Hi! I'm here to help you create personalized music. Tell me what kind of mood, style, or feeling you want to express, and I'll compose something unique for you. What would you like to create today?`
-        : `Hi! I'm here to help you create personalized meditation sessions. Tell me what you'd like to focus on - relaxation, stress relief, sleep, or mindfulness - and I'll guide you through it. What would you like to work on today?`,
+        ? `Hi! I'm Dara, your music therapist. I'm here to listen and help you find inner peace through personalized healing music. How are you feeling today?`
+        : `Hi! I'm Dara, your meditation therapist. I'm here to listen and guide you through your wellness journey. What would you like to focus on today - relaxation, stress relief, sleep, or mindfulness?`,
       isUser: false,
       timestamp: new Date()
     }]);
@@ -252,8 +252,8 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
 
     try {
       if (activeTab === 'Meditation') {
-        // Use meditation-therapist-ai for meditation therapist
-        const { data, error } = await musicApi.meditationTherapistAI({
+        // Use therapist-ai for meditation chatbot (Dara)
+        const { data, error } = await musicApi.talkToDara({
           userInput: messageText,
           sessionType: 'meditation',
           conversationHistory: messages.map(msg => ({
@@ -290,7 +290,7 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
         }
 
       } else {
-        // Use therapist-ai for music chatbot
+        // Use therapist-ai for music chatbot (Dara)
         const { data, error } = await musicApi.talkToDara({
           userInput: messageText,
           sessionType: 'music',
@@ -507,7 +507,7 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
                   <div className="flex items-center gap-2 mb-1">
                     <Sparkles className="w-4 h-4 text-purple-500" />
                     <span className="text-xs font-medium text-purple-600">
-                      AI Assistant
+                      Dara
                     </span>
                   </div>
                 )}
@@ -525,7 +525,7 @@ const CreateMusicScreen: React.FC<CreateMusicScreenProps> = ({ onClose, onPlaySo
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles className="w-4 h-4 text-purple-500" />
                   <span className="text-xs font-medium text-purple-600">
-                    AI Assistant
+                    Dara
                   </span>
                 </div>
                 <div className="flex items-center space-x-1">
