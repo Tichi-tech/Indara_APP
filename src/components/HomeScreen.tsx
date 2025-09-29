@@ -216,7 +216,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             version: '1.0',
             isPublic: true,
             createdAt: track.created_at,
-            creator: track.profiles?.display_name || 'Community',
+            creator: track.owner?.display_name || 'Community',
             duration: track.duration || '3:45',
             audio_url: track.audio_url
           }));
@@ -320,7 +320,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       version: '1.0',
       isPublic: true,
       createdAt: track.created_at,
-      creator: track.profiles?.display_name || 'Community',
+      creator: track.owner?.display_name || 'Community',
       duration: track.duration || '3:45',
       audio_url: track.audio_url
     };

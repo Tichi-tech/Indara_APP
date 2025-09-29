@@ -633,7 +633,7 @@ export const musicApi = {
         .from('generated_tracks')
         .select(`
           *,
-          profiles(display_name, avatar_url)
+          owner:profiles!generated_tracks_user_fk(display_name, avatar_url)
         `)
         .eq('is_featured', true)
         .order('created_at', { ascending: false });
