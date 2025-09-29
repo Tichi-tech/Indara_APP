@@ -22,7 +22,7 @@ export const THUMBNAIL_SETS: ThumbnailSet[] = [
     genre: 'forest',
     images: [
       '/thumbnails/forest/Ambient-forest.png',
-      '/thumbnails/forest/nature=healing.png'
+      '/thumbnails/forest/nature-healing.png'
     ],
     keywords: ['forest', 'trees', 'woodland', 'green', 'leaves'],
     priority: 15
@@ -32,7 +32,7 @@ export const THUMBNAIL_SETS: ThumbnailSet[] = [
     images: [
       '/thumbnails/nature/Ambient-forest.png',
       '/thumbnails/nature/calm-mountain.png',
-      '/thumbnails/nature/nature=healing.png',
+      '/thumbnails/nature/nature-healing.png',
       '/thumbnails/nature/ocean-sunraise.png'
     ],
     keywords: ['nature', 'natural', 'landscape', 'outdoor', 'wild'],

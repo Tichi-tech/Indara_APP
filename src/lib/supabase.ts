@@ -633,9 +633,7 @@ export const musicApi = {
         .from('generated_tracks')
         .select(`
           *,
-          profiles(display_name, avatar_url),
-          track_likes(count),
-          track_plays(count)
+          profiles(display_name, avatar_url)
         `)
         .eq('is_featured', true)
         .order('created_at', { ascending: false });

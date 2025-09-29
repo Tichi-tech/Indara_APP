@@ -173,7 +173,7 @@ const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
                   <div className="flex-1">
                     <p className="text-sm font-medium text-black">{track.title}</p>
                     <p className="text-xs text-gray-500">
-                      {track.track_plays[0]?.count || 0} plays • {track.track_likes[0]?.count || 0} likes
+                      0 plays • 0 likes
                     </p>
                   </div>
                   <img

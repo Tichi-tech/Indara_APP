@@ -272,11 +272,11 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                           <div className="flex items-center gap-4 mt-2">
                             <div className="flex items-center gap-1">
                               <Play className="w-3 h-3 text-gray-400" />
-                              <span className="text-xs text-gray-600">{track.track_plays[0]?.count || 0}</span>
+                              <span className="text-xs text-gray-600">0</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <Heart className="w-3 h-3 text-gray-400" />
-                              <span className="text-xs text-gray-600">{track.track_likes[0]?.count || 0}</span>
+                              <span className="text-xs text-gray-600">0</span>
                             </div>
                           </div>
                         </div>
