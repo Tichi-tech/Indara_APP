@@ -30,7 +30,7 @@ const TalkToDaraScreen: React.FC<TalkToDaraScreenProps> = ({
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hello! I'm Dara, your personal wellness therapist. I'm here to help you with meditation guidance, stress relief, and emotional support. How are you feeling today?",
+      text: "Hi there! I'm Dara, your AI wellness therapist. I'm here to listen and support you through whatever you're experiencing. Whether you need help with stress, anxiety, sleep, or just want someone to talk to, I'm here for you. What's on your mind today?",
       isUser: false,
       timestamp: new Date()
     }
@@ -107,17 +107,18 @@ const TalkToDaraScreen: React.FC<TalkToDaraScreenProps> = ({
     }
   };
 
-  const quickPrompts = [
-    "I'm feeling stressed",
-    "I need help sleeping",
-    "I'm anxious about something",
-    "I want to practice mindfulness",
-    "Help me relax"
-  ];
+  // Auto-resize textarea based on content
+  const handleTextareaResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputText(e.target.value);
 
-  const handleQuickPrompt = (prompt: string) => {
-    setInputText(prompt);
+    // Reset height to recalculate
+    e.target.style.height = '40px';
+
+    // Set height based on scroll height
+    const newHeight = Math.min(Math.max(e.target.scrollHeight, 40), 120);
+    e.target.style.height = newHeight + 'px';
   };
+
 
   return (
     <div className="min-h-dvh bg-gradient-to-b from-purple-50 to-blue-50">
@@ -145,7 +146,7 @@ const TalkToDaraScreen: React.FC<TalkToDaraScreenProps> = ({
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-[180px]">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-[200px]">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -190,36 +191,22 @@ const TalkToDaraScreen: React.FC<TalkToDaraScreenProps> = ({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Quick Prompts */}
-        {messages.length <= 1 && (
-          <div className="px-4 pb-2">
-            <p className="text-sm text-gray-600 mb-2">Quick starters:</p>
-            <div className="flex flex-wrap gap-2">
-              {quickPrompts.map((prompt, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleQuickPrompt(prompt)}
-                  className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm hover:bg-purple-200 transition-colors"
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* Input Area */}
-        <div className="p-4 bg-white border-t border-gray-200">
+        {/* Input Area - Fixed above bottom nav */}
+        <div
+          className="fixed bottom-[80px] left-1/2 -translate-x-1/2 px-3 py-3 bg-white border-t border-gray-200"
+          style={{ width: 'calc(100% - 2rem)', maxWidth: '340px' }}
+        >
           <div className="flex items-end gap-3">
             <div className="flex-1">
               <textarea
                 value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
+                onChange={handleTextareaResize}
                 onKeyPress={handleKeyPress}
                 placeholder="Type your message to Dara..."
                 className="w-full px-4 py-3 border border-gray-200 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 rows={1}
-                style={{ minHeight: '48px', maxHeight: '120px' }}
+                style={{ height: '40px', minHeight: '40px', maxHeight: '120px', overflow: 'hidden' }}
               />
             </div>
             <button

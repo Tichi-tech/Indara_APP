@@ -468,25 +468,42 @@ export const musicApi = {
     }
   },
 
-  // Direct Suno Generation (if needed)
-  generateWithSuno: async (params: {
-    action: string;
-    prompt: string;
-    style: string;
-  }) => {
+
+  // Job Status Checking - Debug Function
+  checkJobStatus: async (jobId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('suno-music-generator', {
-        body: {
-          action: params.action || 'generate',
-          prompt: params.prompt,
-          style: params.style || 'Ambient'
-        }
-      });
+      console.log('🔍 Checking job status for ID:', jobId);
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('id', jobId)
+        .single();
 
       if (error) throw error;
+      console.log('📊 Job status found:', data);
       return { data, error: null };
     } catch (error) {
-      console.error('❌ Suno generation failed:', error);
+      console.error('❌ Failed to check job status:', error);
+      return { data: null, error };
+    }
+  },
+
+  // Get all user jobs for debugging
+  getUserJobs: async (userId: string) => {
+    try {
+      console.log('🔍 Fetching all jobs for user:', userId);
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      console.log('📊 User jobs found:', data);
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ Failed to fetch user jobs:', error);
       return { data: null, error };
     }
   },
@@ -560,6 +577,31 @@ export const musicApi = {
       return { data, error: null };
     } catch (error) {
       console.error('❌ AI chat failed:', error);
+      return { data: null, error };
+    }
+  },
+
+  // Meditation Therapist AI
+  meditationTherapistAI: async (params: {
+    userInput: string;
+    sessionType?: string;
+    conversationHistory?: any[];
+  }) => {
+    try {
+      console.log('🧘 Talking to meditation therapist with input:', params.userInput);
+      const { data, error } = await supabase.functions.invoke('meditation-therapist-ai', {
+        body: {
+          userInput: params.userInput,
+          sessionType: params.sessionType || 'meditation',
+          conversationHistory: params.conversationHistory || []
+        }
+      });
+
+      if (error) throw error;
+      console.log('✅ Meditation therapist response received:', data);
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ Meditation therapist AI failed:', error);
       return { data: null, error };
     }
   },
