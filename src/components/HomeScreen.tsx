@@ -67,7 +67,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const { user } = useAuth();
   const { currentTrack, isPlaying, playTrack, togglePlayPause } = useMusicPlayer();
   const { unreadCount } = useNotifications(); // Get real-time unread count
-  const [activeCategory, setActiveCategory] = useState<'music' | 'meditation'>('music');
   const [featuredTracks, setFeaturedTracks] = useState<Song[]>([]);
   const [likingTracks, setLikingTracks] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -196,7 +195,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     const fetchFeaturedTracks = async () => {
       try {
         setLoading(true);
-        const { data, error } = await musicApi.getFeaturedTracks();
+        const { data, error } = await musicApi.getCommunityTracks();
 
         if (!error && data) {
           // Transform backend data to Song format
@@ -216,7 +215,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             version: '1.0',
             isPublic: true,
             createdAt: track.created_at,
-            creator: track.owner?.display_name || 'Community',
+            creator: 'Community',
             duration: track.duration || '3:45',
             audio_url: track.audio_url
           }));
@@ -320,7 +319,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       version: '1.0',
       isPublic: true,
       createdAt: track.created_at,
-      creator: track.owner?.display_name || 'Community',
+      creator: 'Community',
       duration: track.duration || '3:45',
       audio_url: track.audio_url
     };
@@ -334,8 +333,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     onNewFeaturedTrack: handleNewFeaturedTrack
   });
 
-  // Get current tracks based on active category - use real data if available, fallback to sample
-  const currentTracks = featuredTracks.length > 0 ? featuredTracks : (activeCategory === 'music' ? musicTracks : meditationTracks);
+  // Get current tracks - only show real community tracks, no fake fallback
+  const currentTracks = featuredTracks;
 
   const featuredPlaylists: Playlist[] = [
     {
@@ -404,42 +403,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     <div className="min-h-dvh bg-white">
       <div className="mx-auto max-w-[420px] h-dvh flex flex-col">
 
-        {/* Category Tabs */}
-        <div className="px-6 py-4 flex justify-center sticky top-0 bg-white/90 backdrop-blur z-10">
-          <div className="flex items-center gap-3 bg-gray-100 p-1 rounded-full">
-            <button
-              onClick={() => setActiveCategory('music')}
-              className={`px-8 py-3 rounded-full font-medium transition-colors min-w-[120px] ${
-                activeCategory === 'music'
-                  ? 'bg-black text-white'
-                  : 'bg-transparent text-gray-600 hover:bg-gray-200'
-              }`}
-              aria-pressed={activeCategory === 'music'}
-            >
-              Music
-            </button>
-            <button
-              onClick={() => setActiveCategory('meditation')}
-              className={`px-8 py-3 rounded-full font-medium transition-colors min-w-[120px] ${
-                activeCategory === 'meditation'
-                  ? 'bg-black text-white'
-                  : 'bg-transparent text-gray-600 hover:bg-gray-200'
-              }`}
-              aria-pressed={activeCategory === 'meditation'}
-            >
-              Meditation
-            </button>
-          </div>
-        </div>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto pb-[180px] [padding-bottom:calc(env(safe-area-inset-bottom)+180px)]">
+        <main className="flex-1 overflow-y-auto pb-[180px] pt-6 [padding-bottom:calc(env(safe-area-inset-bottom)+180px)]">
           {/* Healing Community */}
           <section className="mb-8">
             <div className="flex items-center justify-between px-6 mb-4">
-              <h2 className="text-2xl font-bold text-black">Healing Community</h2>
-              <button 
-                onClick={activeCategory === 'music' ? onHealingMusicPlaylist : onMeditationPlaylist}
+              <h2 className="text-2xl font-bold text-black">Healing Music Community</h2>
+              <button
+                onClick={onHealingMusicPlaylist}
                 className="text-gray-600 font-medium flex items-center gap-1"
               >
                 More

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Search, Music, Plus, Filter, Heart, Play, Pause } from 'lucide-react';
+import { ArrowLeft, Search, Music, Plus, Filter, Heart, Play, Pause, Share2, Lock } from 'lucide-react';
 import BottomNav from './BottomNav';
 import CreateMusicScreen from './CreateMusicScreen';
 import { musicApi } from '../lib/supabase';
@@ -48,26 +48,30 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
   const [showCreateScreen, setShowCreateScreen] = useState(false);
   const [likingTracks, setLikingTracks] = useState<Set<string>>(new Set());
   const [featuredTracks, setFeaturedTracks] = useState<Song[]>([]);
+  const [publishingTracks, setPublishingTracks] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   const filters = ['All', 'Music', 'Meditation'];
 
-  // Fetch featured tracks for playlist/liked sections
+  // Fetch user's own tracks
   useEffect(() => {
-    const fetchFeaturedTracks = async () => {
+    const fetchUserData = async () => {
+      if (!user) return;
+
       try {
         setLoading(true);
-        const { data, error } = await musicApi.getFeaturedTracks();
 
-        if (!error && data) {
-          // Transform backend data to Song format
-          const transformedTracks = data.map(track => ({
+        // Get user's own tracks
+        const { data: tracks, error: tracksError } = await musicApi.getUserTracks(user.id);
+
+        if (!tracksError && tracks) {
+          const transformedTracks = tracks.map(track => ({
             id: track.id,
             title: track.title || 'Untitled',
             description: track.prompt || track.admin_notes || '',
             tags: track.style || '',
-            plays: Math.floor(Math.random() * 1000),
-            likes: Math.floor(Math.random() * 100),
+            plays: track.play_count || 0,
+            likes: track.like_count || 0,
             image: track.thumbnail_url || getSmartThumbnail(
               track.title || 'Untitled',
               track.prompt || track.admin_notes || '',
@@ -75,9 +79,9 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
               track.id
             ),
             version: '1.0',
-            isPublic: true,
+            isPublic: track.is_published || false,
             createdAt: track.created_at,
-            creator: track.profiles?.display_name || 'Community',
+            creator: 'You',
             duration: track.duration || '3:45',
             audio_url: track.audio_url
           }));
@@ -85,16 +89,17 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
         } else {
           setFeaturedTracks([]);
         }
+
       } catch (err) {
-        console.error('Error fetching featured tracks:', err);
+        console.error('Error fetching user data:', err);
         setFeaturedTracks([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchFeaturedTracks();
-  }, []);
+    fetchUserData();
+  }, [user]);
 
   // Helper function to get first two words from title
   const getTwoWords = (title: string) => {
@@ -161,9 +166,58 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
     setShowCreateScreen(false);
   };
 
-  // Get tracks for playlists and liked sections - use featured tracks as examples
-  const playlistTracks = featuredTracks.slice(0, 3); // First 3 tracks as saved playlists
-  const likedTracks = featuredTracks.slice(3, 6);    // Next 3 tracks as liked songs
+  // Handle publish/unpublish track
+  const handleTogglePublish = async (trackId: string, isCurrentlyPublic: boolean) => {
+    if (!user) return;
+
+    setPublishingTracks(prev => new Set([...prev, trackId]));
+
+    try {
+      if (isCurrentlyPublic) {
+        await musicApi.unpublishTrack(trackId, user.id);
+      } else {
+        await musicApi.publishTrackToCommunity(trackId, user.id);
+      }
+
+      // Refresh user tracks to show updated status
+      const { data: tracks } = await musicApi.getUserTracks(user.id);
+      if (tracks) {
+        const transformedTracks = tracks.map(track => ({
+          id: track.id,
+          title: track.title || 'Untitled',
+          description: track.prompt || track.admin_notes || '',
+          tags: track.style || '',
+          plays: track.play_count || 0,
+          likes: track.like_count || 0,
+          image: track.thumbnail_url || getSmartThumbnail(
+            track.title || 'Untitled',
+            track.prompt || track.admin_notes || '',
+            track.style || '',
+            track.id
+          ),
+          version: '1.0',
+          isPublic: track.is_published || false,
+          createdAt: track.created_at,
+          creator: 'You',
+          duration: track.duration || '3:45',
+          audio_url: track.audio_url
+        }));
+        setFeaturedTracks(transformedTracks);
+      }
+    } catch (error) {
+      console.error('Error toggling publish status:', error);
+    } finally {
+      setPublishingTracks(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(trackId);
+        return newSet;
+      });
+    }
+  };
+
+  // Show user's own tracks instead of fake playlist data
+  const playlistTracks = featuredTracks.slice(0, 3); // User's first 3 tracks
+  const likedTracks: Song[] = []; // Empty for now - will implement liked tracks later
 
   return (
     <div className="min-h-dvh bg-white">
@@ -222,10 +276,34 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
                           <Play className="w-6 h-6 text-white fill-white ml-0.5" />
                         )}
                       </button>
+
+                      {/* Publish Button */}
+                      <button
+                        onClick={() => handleTogglePublish(track.id, track.isPublic)}
+                        disabled={publishingTracks.has(track.id)}
+                        className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                          track.isPublic
+                            ? 'bg-green-500 hover:bg-green-600'
+                            : 'bg-gray-500 hover:bg-gray-600'
+                        } ${publishingTracks.has(track.id) ? 'opacity-50' : ''}`}
+                      >
+                        {publishingTracks.has(track.id) ? (
+                          <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                        ) : track.isPublic ? (
+                          <Share2 className="w-4 h-4 text-white" />
+                        ) : (
+                          <Lock className="w-4 h-4 text-white" />
+                        )}
+                      </button>
                     </div>
-                    <span className="text-sm text-black font-medium text-center">
-                      {getTwoWords(track.title)}
-                    </span>
+                    <div className="text-center">
+                      <span className="text-sm text-black font-medium">
+                        {getTwoWords(track.title)}
+                      </span>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {track.isPublic ? 'Published' : 'Private'}
+                      </div>
+                    </div>
                   </div>
                 ))
               ) : (

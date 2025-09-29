@@ -488,25 +488,6 @@ export const musicApi = {
     }
   },
 
-  // Get all user jobs for debugging
-  getUserJobs: async (userId: string) => {
-    try {
-      console.log('🔍 Fetching all jobs for user:', userId);
-      const { data, error } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      console.log('📊 User jobs found:', data);
-      return { data, error: null };
-    } catch (error) {
-      console.error('❌ Failed to fetch user jobs:', error);
-      return { data: null, error };
-    }
-  },
 
   // Meditation Session Generation
   generateMeditationSession: async (params: {
@@ -607,34 +588,12 @@ export const musicApi = {
   },
 
   // Track Management
-  getUserTracks: async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('generated_tracks')
-        .select(`
-          *,
-          track_likes(count),
-          track_plays(count)
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return { data: data || [], error: null };
-    } catch (error) {
-      console.error('❌ Failed to fetch user tracks:', error);
-      return { data: [], error };
-    }
-  },
 
   getFeaturedTracks: async () => {
     try {
       const { data, error } = await supabase
         .from('generated_tracks')
-        .select(`
-          *,
-          owner:profiles!generated_tracks_user_fk(display_name, avatar_url)
-        `)
+        .select('*')
         .eq('is_featured', true)
         .order('created_at', { ascending: false });
 
@@ -997,6 +956,93 @@ export const musicApi = {
     } catch (error) {
       console.error('❌ Failed to send direct message:', error);
       return { data: null, error };
+    }
+  },
+
+  // User Publishing System
+  publishTrackToCommunity: async (trackId: string, userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('generated_tracks')
+        .update({ is_published: true })
+        .eq('id', trackId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Notify user about successful publishing
+      await musicApi.createNotification({
+        user_id: userId,
+        type: 'system',
+        title: 'Music Published! 🎵',
+        message: 'Your track is now available in the community',
+        data: { track_id: trackId }
+      });
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ Failed to publish track:', error);
+      return { data: null, error };
+    }
+  },
+
+  unpublishTrack: async (trackId: string, userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('generated_tracks')
+        .update({ is_published: false })
+        .eq('id', trackId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ Failed to unpublish track:', error);
+      return { data: null, error };
+    }
+  },
+
+  // Get community tracks (both user-published and admin-featured)
+  getCommunityTracks: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('generated_tracks')
+        .select('*')
+        .or('is_published.eq.true,is_featured.eq.true')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Filter out any tracks that are neither published nor featured (handle NULL values)
+      const filteredData = (data || []).filter(track =>
+        track.is_published === true || track.is_featured === true
+      );
+
+      return { data: filteredData, error: null };
+    } catch (error) {
+      console.error('❌ Failed to fetch community tracks:', error);
+      return { data: [], error };
+    }
+  },
+
+  // Get user's own tracks (both private and published)
+  getUserTracks: async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('generated_tracks')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return { data: data || [], error: null };
+    } catch (error) {
+      console.error('❌ Failed to fetch user tracks:', error);
+      return { data: [], error };
     }
   },
 

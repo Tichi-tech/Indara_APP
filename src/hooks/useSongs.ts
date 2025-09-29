@@ -125,7 +125,7 @@ export function useSongs() {
     description: string;
     tags: string;
     image: string;
-    is_public?: boolean;
+    is_published?: boolean;
     duration?: string;
   }) => {
     if (!user) {
@@ -140,7 +140,7 @@ export function useSongs() {
         prompt: songData.description,
         style: songData.tags,
         duration: songData.duration || '3:45',
-        is_featured: songData.is_public || false,
+        is_featured: songData.is_published || false,
         status: 'completed'
       }
 
@@ -158,7 +158,7 @@ export function useSongs() {
           likes: 0,
           image: songData.image,
           version: 'v1.0',
-          isPublic: songData.is_public || false,
+          isPublic: songData.is_published || false,
           createdAt: new Date().toISOString(),
           creator: 'You',
           duration: songData.duration || '3:45',
