@@ -46,7 +46,7 @@ interface HomeScreenProps {
   onNameEntry: () => void;
   onHealingMusicPlaylist: () => void;
   onMeditationPlaylist: () => void;
-  onPlaylist: (playlistName: string, playlistDescription?: string) => void;
+  onPlaylist: (playlistId: string, playlistName: string, playlistDescription?: string) => void;
   onInbox: () => void;
 }
 
@@ -68,6 +68,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const { currentTrack, isPlaying, playTrack, togglePlayPause } = useMusicPlayer();
   const { unreadCount } = useNotifications(); // Get real-time unread count
   const [featuredTracks, setFeaturedTracks] = useState<Song[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [likingTracks, setLikingTracks] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
@@ -192,14 +193,20 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
   // Fetch featured tracks on component mount
   useEffect(() => {
-    const fetchFeaturedTracks = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const { data, error } = await musicApi.getCommunityTracks();
 
-        if (!error && data) {
+        // Fetch both tracks and playlists in parallel
+        const [tracksResult, playlistsResult] = await Promise.all([
+          musicApi.getCommunityTracks(),
+          musicApi.getHomeScreenPlaylists()
+        ]);
+
+        // Handle tracks
+        if (!tracksResult.error && tracksResult.data) {
           // Transform backend data to Song format
-          const transformedTracks = data.map(track => ({
+          const transformedTracks = tracksResult.data.map(track => ({
             id: track.id,
             title: track.title || 'Untitled',
             description: track.prompt || track.admin_notes || '',
@@ -223,15 +230,23 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         } else {
           setFeaturedTracks([]);
         }
+
+        // Handle playlists
+        if (!playlistsResult.error && playlistsResult.data) {
+          setPlaylists(playlistsResult.data);
+        } else {
+          setPlaylists([]);
+        }
       } catch (err) {
-        console.error('Error fetching featured tracks:', err);
+        console.error('Error fetching data:', err);
         setFeaturedTracks([]);
+        setPlaylists([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchFeaturedTracks();
+    fetchData();
   }, []);
 
   // Handle play track
@@ -336,68 +351,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   // Get current tracks - only show real community tracks, no fake fallback
   const currentTracks = featuredTracks;
 
-  const featuredPlaylists: Playlist[] = [
-    {
-      id: '1',
-      title: 'Decreasing Anxiety',
-      description: 'Calming sounds to reduce stress and anxiety',
-      image: '/thumbnails/relax/relax-calm.png',
-      creator: 'Healing Sounds',
-      plays: 23400,
-      likes: 23400,
-      trackCount: 12,
-    },
-    {
-      id: '2',
-      title: 'Sleep Soothing',
-      description: 'Gentle melodies for peaceful sleep',
-      image: '/thumbnails/sleep/sleep-soothing.png',
-      creator: 'Dream Therapy',
-      plays: 18500,
-      likes: 15200,
-      trackCount: 18,
-    },
-    {
-      id: '3',
-      title: 'Yoga',
-      description: 'Mindful movements and relaxing soundscapes',
-      image: '/thumbnails/yoga/Yoga-relax.png',
-      creator: 'Zen Flow',
-      plays: 12800,
-      likes: 9400,
-      trackCount: 15,
-    },
-    {
-      id: '4',
-      title: 'Baby Setting',
-      description: 'Gentle lullabies for babies and toddlers',
-      image: '/thumbnails/babysetting/babysetting.png',
-      creator: 'Baby Dreams',
-      plays: 31200,
-      likes: 28600,
-      trackCount: 25,
-    },
-    {
-      id: '5',
-      title: 'Meditation',
-      description: 'Deep meditation sessions for inner peace',
-      image: '/thumbnails/meditation/Meditation-clam.png',
-      creator: 'Mindful Space',
-      plays: 16700,
-      likes: 13900,
-      trackCount: 20,
-    },
-    {
-      id: '6',
-      title: 'Focusing',
-      description: 'Enhanced concentration and productivity sounds',
-      image: '/thumbnails/study/study-focus.png',
-      creator: 'Focus Flow',
-      plays: 21300,
-      likes: 17800,
-      trackCount: 22,
-    },
-  ];
 
   return (
     <div className="min-h-dvh bg-white">
@@ -409,7 +362,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           {/* Healing Community */}
           <section className="mb-8">
             <div className="flex items-center justify-between px-6 mb-4">
-              <h2 className="text-2xl font-bold text-black">Healing Music Community</h2>
+              <h2 className="text-xl font-bold text-black">Healing Community</h2>
               <button
                 onClick={onHealingMusicPlaylist}
                 className="text-gray-600 font-medium flex items-center gap-1"
@@ -511,13 +464,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
           {/* Featured Playlists (fixed layout) */}
           <section className="px-6">
-            <h2 className="text-2xl font-bold text-black mb-6">Featured Playlists</h2>
+            <h2 className="text-xl font-bold text-black mb-6">Playlists</h2>
 
             <div className="space-y-4">
-              {featuredPlaylists.map((playlist) => (
+              {playlists.map((playlist) => (
                 <button
                   key={playlist.id}
-                  onClick={() => onPlaylist(playlist.title, playlist.description)}
+                  onClick={() => onPlaylist(playlist.id, playlist.title, playlist.description)}
                   className="bg-white p-4 rounded-2xl shadow-sm w-full hover:shadow-md transition-shadow cursor-pointer text-left"
                 >
                   <div className="flex items-center gap-4">

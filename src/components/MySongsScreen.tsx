@@ -49,9 +49,37 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
   const [likingTracks, setLikingTracks] = useState<Set<string>>(new Set());
   const [featuredTracks, setFeaturedTracks] = useState<Song[]>([]);
   const [publishingTracks, setPublishingTracks] = useState<Set<string>>(new Set());
+  const [userPlaylists, setUserPlaylists] = useState<Array<{id: string, name: string, trackCount: number, image: string}>>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
 
   const filters = ['All', 'Music', 'Meditation'];
+
+  // Load playlists from database
+  const loadUserPlaylists = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await musicApi.getUserPlaylists(user.id);
+      if (!error && data) {
+        const transformedPlaylists = data.map(playlist => ({
+          id: playlist.id,
+          name: playlist.name,
+          trackCount: playlist.track_count || 0,
+          image: '/thumbnails/playlist-default.png' // Default playlist image
+        }));
+        setUserPlaylists(transformedPlaylists);
+      }
+    } catch (error) {
+      console.error('Error loading playlists:', error);
+    }
+  };
+
+  // Load playlists when user changes
+  useEffect(() => {
+    loadUserPlaylists();
+  }, [user]);
 
   // Fetch user's own tracks
   useEffect(() => {
@@ -215,6 +243,38 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
     }
   };
 
+  // Handle create playlist
+  const handleCreatePlaylist = () => {
+    setShowCreatePlaylist(true);
+  };
+
+  // Handle save new playlist
+  const handleSavePlaylist = async () => {
+    if (!newPlaylistName.trim() || !user) return;
+
+    try {
+      const { data, error } = await musicApi.createPlaylist(user.id, newPlaylistName.trim());
+
+      if (!error && data) {
+        // Refresh playlists from database
+        await loadUserPlaylists();
+        setNewPlaylistName('');
+        setShowCreatePlaylist(false);
+      } else {
+        console.error('Failed to create playlist:', error);
+      }
+    } catch (error) {
+      console.error('Error creating playlist:', error);
+    }
+  };
+
+  // Handle playlist click
+  const handlePlaylistClick = (playlist: any) => {
+    // Navigate to playlist details or open playlist editor
+    console.log('Open playlist:', playlist.name);
+    // This could navigate to a playlist editing screen in the future
+  };
+
   // Show user's own tracks instead of fake playlist data
   const playlistTracks = featuredTracks.slice(0, 3); // User's first 3 tracks
   const likedTracks: Song[] = []; // Empty for now - will implement liked tracks later
@@ -238,86 +298,89 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
           {/* Playlists Section */}
           <div className="px-6 mb-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-4xl font-bold text-black">Playlists</h2>
-              <button 
-                onClick={handleCreateMusic}
-                className="w-8 h-8 flex items-center justify-center"
-              >
-                <Plus className="w-8 h-8 text-black" />
-              </button>
+              <h2 className="text-xl font-bold text-black">Playlists</h2>
+              {userPlaylists.length > 5 && (
+                <button
+                  onClick={() => {
+                    // TODO: Navigate to full playlists view
+                    console.log('Show all playlists');
+                  }}
+                  className="text-gray-600 font-medium flex items-center gap-1"
+                >
+                  More
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              )}
             </div>
             
             {/* Playlists Grid */}
-            <div className="grid grid-cols-3 gap-4 mb-2">
-              {loading ? (
-                // Loading state
-                [1, 2, 3].map((i) => (
-                  <div key={i} className="flex flex-col items-center">
-                    <div className="w-full aspect-square rounded-2xl bg-gray-200 mb-3 animate-pulse" />
-                    <div className="h-4 bg-gray-200 rounded w-16 animate-pulse" />
-                  </div>
-                ))
-              ) : playlistTracks.length > 0 ? (
-                playlistTracks.map((track) => (
-                  <div key={track.id} className="flex flex-col items-center">
-                    <div className="relative w-full aspect-square rounded-2xl overflow-hidden mb-3">
-                      <img
-                        src={track.image}
-                        alt={track.title}
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        onClick={() => handlePlaySong(track)}
-                        className="absolute inset-0 bg-black/20 flex items-center justify-center hover:bg-black/40 transition-colors"
-                      >
-                        {currentTrack?.id === track.id && isPlaying ? (
-                          <Pause className="w-6 h-6 text-white fill-white" />
-                        ) : (
-                          <Play className="w-6 h-6 text-white fill-white ml-0.5" />
-                        )}
-                      </button>
+            <div className="grid grid-cols-4 gap-3 mb-2">
+              {/* Create New Playlist Card */}
+              <button
+                onClick={handleCreatePlaylist}
+                className="flex flex-col items-center"
+              >
+                <div className="w-full aspect-square rounded-xl bg-gray-100 mb-2 flex items-center justify-center border-2 border-dashed border-gray-300 hover:border-gray-400 transition-colors">
+                  <Plus className="w-6 h-6 text-gray-400" />
+                </div>
+                <span className="text-xs text-gray-600 font-medium text-center">
+                  New Playlist
+                </span>
+              </button>
 
-                      {/* Publish Button */}
-                      <button
-                        onClick={() => handleTogglePublish(track.id, track.isPublic)}
-                        disabled={publishingTracks.has(track.id)}
-                        className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                          track.isPublic
-                            ? 'bg-green-500 hover:bg-green-600'
-                            : 'bg-gray-500 hover:bg-gray-600'
-                        } ${publishingTracks.has(track.id) ? 'opacity-50' : ''}`}
-                      >
-                        {publishingTracks.has(track.id) ? (
-                          <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
-                        ) : track.isPublic ? (
-                          <Share2 className="w-4 h-4 text-white" />
-                        ) : (
-                          <Lock className="w-4 h-4 text-white" />
-                        )}
-                      </button>
-                    </div>
-                    <div className="text-center">
-                      <span className="text-sm text-black font-medium">
-                        {getTwoWords(track.title)}
-                      </span>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {track.isPublic ? 'Published' : 'Private'}
+              {/* User Playlists - Show max 5 */}
+              {userPlaylists.slice(0, 5).map((playlist) => (
+                <button
+                  key={playlist.id}
+                  onClick={() => handlePlaylistClick(playlist)}
+                  className="flex flex-col items-center"
+                >
+                  <div className="relative w-full aspect-square rounded-xl overflow-hidden mb-2">
+                    <img
+                      src={playlist.image}
+                      alt={playlist.name}
+                      className="w-full h-full object-cover bg-gradient-to-br from-purple-400 to-blue-500"
+                      onError={(e) => {
+                        // Fallback to gradient background if image fails
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                        e.currentTarget.src = '';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                      <div className="text-white text-center">
+                        <Music className="w-4 h-4 mx-auto mb-1" />
+                        <span className="text-xs">{playlist.trackCount}</span>
                       </div>
                     </div>
                   </div>
-                ))
-              ) : (
-                // Empty state
-                [1, 2, 3].map((i) => (
-                  <div key={i} className="flex flex-col items-center">
-                    <div className="w-full aspect-square rounded-2xl bg-gray-100 mb-3 flex items-center justify-center">
-                      <Music className="w-8 h-8 text-gray-400" />
+                  <span className="text-xs text-black font-medium text-center line-clamp-2">
+                    {playlist.name}
+                  </span>
+                </button>
+              ))}
+
+              {/* Empty state if no playlists */}
+              {userPlaylists.length === 0 && (
+                <>
+                  <div className="flex flex-col items-center">
+                    <div className="w-full aspect-square rounded-xl bg-gray-100 mb-2 flex items-center justify-center">
+                      <Music className="w-6 h-6 text-gray-400" />
                     </div>
-                    <span className="text-sm text-gray-400 font-medium text-center">
-                      No tracks
+                    <span className="text-xs text-gray-400 font-medium text-center">
+                      Empty
                     </span>
                   </div>
-                ))
+                  <div className="flex flex-col items-center">
+                    <div className="w-full aspect-square rounded-xl bg-gray-100 mb-2 flex items-center justify-center">
+                      <Music className="w-6 h-6 text-gray-400" />
+                    </div>
+                    <span className="text-xs text-gray-400 font-medium text-center">
+                      Empty
+                    </span>
+                  </div>
+                </>
               )}
             </div>
             
@@ -327,22 +390,37 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
 
           {/* Liked Section */}
           <div className="px-6 mb-8">
-            <h2 className="text-4xl font-bold text-black mb-6">Liked</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-black">Liked</h2>
+              {likedTracks.length > 6 && (
+                <button
+                  onClick={() => {
+                    // TODO: Navigate to full liked songs view
+                    console.log('Show all liked songs');
+                  }}
+                  className="text-gray-600 font-medium flex items-center gap-1"
+                >
+                  More
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              )}
+            </div>
             
             {/* Liked Songs Grid */}
-            <div className="grid grid-cols-3 gap-4 mb-2">
+            <div className="grid grid-cols-4 gap-3 mb-2">
               {loading ? (
-                // Loading state
-                [1, 2, 3].map((i) => (
-                  <div key={i} className="flex flex-col items-center">
-                    <div className="w-full aspect-square rounded-2xl bg-gray-200 mb-3 animate-pulse" />
-                    <div className="h-4 bg-gray-200 rounded w-16 animate-pulse" />
-                  </div>
-                ))
+                // Loading state - show 1 loading card
+                <div className="flex flex-col items-center">
+                  <div className="w-full aspect-square rounded-xl bg-gray-200 mb-2 animate-pulse" />
+                  <div className="h-3 bg-gray-200 rounded w-12 animate-pulse" />
+                </div>
               ) : likedTracks.length > 0 ? (
-                likedTracks.map((track) => (
+                // Show actual liked tracks (up to 6)
+                likedTracks.slice(0, 6).map((track) => (
                   <div key={track.id} className="flex flex-col items-center">
-                    <div className="relative w-full aspect-square rounded-2xl overflow-hidden mb-3">
+                    <div className="relative w-full aspect-square rounded-xl overflow-hidden mb-2">
                       <img
                         src={track.image}
                         alt={track.title}
@@ -353,29 +431,27 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
                         className="absolute inset-0 bg-black/20 flex items-center justify-center hover:bg-black/40 transition-colors"
                       >
                         {currentTrack?.id === track.id && isPlaying ? (
-                          <Pause className="w-6 h-6 text-white fill-white" />
+                          <Pause className="w-4 h-4 text-white fill-white" />
                         ) : (
-                          <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+                          <Play className="w-4 h-4 text-white fill-white ml-0.5" />
                         )}
                       </button>
                     </div>
-                    <span className="text-sm text-black font-medium text-center">
+                    <span className="text-xs text-black font-medium text-center">
                       {getTwoWords(track.title)}
                     </span>
                   </div>
                 ))
               ) : (
-                // Empty state
-                [1, 2, 3].map((i) => (
-                  <div key={i} className="flex flex-col items-center">
-                    <div className="w-full aspect-square rounded-2xl bg-gray-100 mb-3 flex items-center justify-center">
-                      <Heart className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <span className="text-sm text-gray-400 font-medium text-center">
-                      No likes
-                    </span>
+                // Empty state - show only 1 empty card
+                <div className="flex flex-col items-center">
+                  <div className="w-full aspect-square rounded-xl bg-gray-100 mb-2 flex items-center justify-center">
+                    <Heart className="w-6 h-6 text-gray-400" />
                   </div>
-                ))
+                  <span className="text-xs text-gray-400 font-medium text-center">
+                    No likes yet
+                  </span>
+                </div>
               )}
             </div>
             
@@ -385,7 +461,7 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
 
           {/* My Songs Section */}
           <div className="px-6">
-            <h2 className="text-4xl font-bold text-black mb-6">My songs</h2>
+            <h2 className="text-xl font-bold text-black mb-6">My songs</h2>
             
             {/* Songs Count and Filter */}
             <div className="flex items-center justify-between mb-6">
@@ -529,6 +605,48 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
                 // You can handle the created song here if needed
               }}
             />
+          </div>
+        )}
+
+        {/* Create Playlist Modal */}
+        {showCreatePlaylist && (
+          <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center p-6">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+              <h3 className="text-xl font-bold text-black mb-4">Create New Playlist</h3>
+
+              <input
+                type="text"
+                value={newPlaylistName}
+                onChange={(e) => setNewPlaylistName(e.target.value)}
+                placeholder="Enter playlist name"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-black placeholder-gray-500 focus:outline-none focus:border-black mb-6"
+                autoFocus
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSavePlaylist();
+                  }
+                }}
+              />
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowCreatePlaylist(false);
+                    setNewPlaylistName('');
+                  }}
+                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSavePlaylist}
+                  disabled={!newPlaylistName.trim()}
+                  className="flex-1 px-4 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Create
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

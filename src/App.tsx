@@ -108,7 +108,7 @@ function App() {
   const [phoneNumber, setPhoneNumber] = useState('+1 650-213-7379');
   const [isSignInFlow, setIsSignInFlow] = useState(false);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
-  const [selectedPlaylist, setSelectedPlaylist] = useState<{name: string; description?: string} | null>(null);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<{id: string; name: string; description?: string} | null>(null);
 
   // App bootstrap + error boundary
   useEffect(() => {
@@ -128,27 +128,16 @@ function App() {
 
   // Handle authentication → route transitions (run only when a transition is needed)
   useEffect(() => {
-    console.log(
-      '🏠 APP: Auth state changed - loading:',
-      authLoading,
-      'user:',
-      user ? user.email : 'none',
-      'screen:',
-      currentScreen
-    );
-
     if (authLoading) return;
 
     if (user) {
       // If authenticated but on an auth screen, go home once
       if (AUTH_SCREENS.has(currentScreen)) {
-        console.log('🏠 APP: User authenticated, navigating to home (once)');
         setCurrentScreen('home');
       }
     } else {
       // If not authenticated but on a protected screen, go to welcome once
       if (PROTECTED_SCREENS.has(currentScreen)) {
-        console.log('🏠 APP: No user, redirecting to welcome (once)');
         setCurrentScreen('welcome');
       }
     }
@@ -301,8 +290,8 @@ function App() {
             onMeditationPlaylist={() => {
               setCurrentScreen('meditationPlaylist');
             }}
-            onPlaylist={(playlistName: string, playlistDescription?: string) => {
-              setSelectedPlaylist({ name: playlistName, description: playlistDescription });
+            onPlaylist={(playlistId: string, playlistName: string, playlistDescription?: string) => {
+              setSelectedPlaylist({ id: playlistId, name: playlistName, description: playlistDescription });
               setCurrentScreen('playlist');
             }}
             onInbox={() => {
@@ -399,6 +388,7 @@ function App() {
       case 'playlist':
         return (
           <PlaylistScreen
+            playlistId={selectedPlaylist?.id || ''}
             playlistName={selectedPlaylist?.name || 'Featured Playlist'}
             playlistDescription={selectedPlaylist?.description}
             onBack={() => setCurrentScreen('home')}

@@ -234,7 +234,6 @@ export const auth = {
   },
 
   onAuthStateChange: (callback: (event: string, session: any) => void) => {
-    console.log('🎧 AUTH LISTENER: Setting up auth state change listener')
     return supabase.auth.onAuthStateChange(callback)
   }
 }
@@ -1046,6 +1045,63 @@ export const musicApi = {
     }
   },
 
+  // Playlist Management
+  createPlaylist: async (userId: string, name: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_save_playlists')
+        .insert({
+          user_id: userId,
+          name: name.trim(),
+          description: '',
+          is_public: false,
+          track_count: 0
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ Failed to create playlist:', error);
+      return { data: null, error };
+    }
+  },
+
+  getUserPlaylists: async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_save_playlists')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return { data: data || [], error: null };
+    } catch (error) {
+      console.error('❌ Failed to fetch user playlists:', error);
+      return { data: [], error };
+    }
+  },
+
+  deletePlaylist: async (userId: string, playlistId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_save_playlists')
+        .delete()
+        .eq('id', playlistId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ Failed to delete playlist:', error);
+      return { data: null, error };
+    }
+  },
+
   getDirectMessages: async (userId: string, otherUserId: string) => {
     try {
       const { data, error } = await supabase
@@ -1062,6 +1118,133 @@ export const musicApi = {
       return { data: data || [], error: null };
     } catch (error) {
       console.error('❌ Failed to fetch direct messages:', error);
+      return { data: [], error };
+    }
+  },
+
+  // Get tracks for a specific playlist
+  getPlaylistTracks: async (playlistId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('playlist_tracks')
+        .select(`
+          *,
+          generated_tracks(*)
+        `)
+        .eq('playlist_id', playlistId);
+
+      if (error) throw error;
+
+      // Transform the data to match the expected Track format
+      const transformedTracks = (data || []).map((playlistTrack: any) => {
+        const track = playlistTrack.generated_tracks;
+        return {
+          id: track.id,
+          title: track.title || 'Untitled',
+          admin_notes: track.admin_notes || '',
+          prompt: track.prompt || '',
+          style: track.style || '',
+          duration: track.duration || '3:45',
+          audio_url: track.audio_url,
+          thumbnail_url: track.thumbnail_url,
+          created_at: track.created_at,
+          admin_rating: track.admin_rating,
+          reviewed_by: track.reviewed_by,
+          reviewed_at: track.reviewed_at,
+          profiles: {
+            display_name: track.user_id ? 'Community' : 'Unknown',
+            avatar_url: null
+          }
+        };
+      });
+
+      return { data: transformedTracks, error: null };
+    } catch (error) {
+      console.error('❌ Failed to fetch playlist tracks:', error);
+      return { data: [], error };
+    }
+  },
+
+  // Sync playlists from web storage/admin panel
+  getHomeScreenPlaylists: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('playlists')
+        .select(`
+          *,
+          playlist_tracks(
+            track_id,
+            generated_tracks(*)
+          )
+        `)
+        .eq('is_system', true);
+
+      if (error) throw error;
+
+      // Transform the data to match the HomeScreen Playlist interface
+      const transformedPlaylists = (data || []).map((playlist: any) => {
+        const tracks = playlist.playlist_tracks || [];
+        const totalDuration = tracks.reduce((sum: number, playlistTrack: any) => {
+          const track = playlistTrack.generated_tracks;
+          if (track?.duration) {
+            // Convert duration string to seconds and add to sum
+            const [minutes, seconds] = track.duration.split(':').map(Number);
+            return sum + (minutes * 60) + seconds;
+          }
+          return sum;
+        }, 0);
+
+        // Convert total seconds back to MM:SS format
+        const totalMinutes = Math.floor(totalDuration / 60);
+        const remainingSeconds = totalDuration % 60;
+        const formattedDuration = `${totalMinutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+
+        // Smart fallback image based on playlist name/title
+        const getPlaylistImage = (name: string, thumbnailUrl?: string) => {
+          if (thumbnailUrl) return thumbnailUrl;
+
+          const title = name.toLowerCase();
+          if (title.includes('anxiety') || title.includes('stress') || title.includes('calm')) {
+            return '/thumbnails/relax/relax-calm.png';
+          } else if (title.includes('sleep') || title.includes('soothing')) {
+            return '/thumbnails/sleep/sleep-soothing.png';
+          } else if (title.includes('yoga')) {
+            return '/thumbnails/yoga/Yoga-relax.png';
+          } else if (title.includes('baby') || title.includes('lullaby')) {
+            return '/thumbnails/babysetting/babysetting.png';
+          } else if (title.includes('meditation') || title.includes('mindful')) {
+            return '/thumbnails/meditation/Meditation-clam.png';
+          } else if (title.includes('focus') || title.includes('study') || title.includes('concentration')) {
+            return '/thumbnails/study/study-focus.png';
+          } else if (title.includes('nature') || title.includes('forest')) {
+            return '/thumbnails/forest/nature-healing.png';
+          } else if (title.includes('ocean') || title.includes('water')) {
+            return '/thumbnails/ocean/ocean.png';
+          } else if (title.includes('rain')) {
+            return '/thumbnails/rain/ambient-rainy.png';
+          } else if (title.includes('piano')) {
+            return '/thumbnails/piano/piano.png';
+          } else {
+            return '/thumbnails/ambient/ambient-sunset.png'; // Default fallback
+          }
+        };
+
+        return {
+          id: playlist.id,
+          title: playlist.name || playlist.title,
+          description: playlist.description || '',
+          image: getPlaylistImage(playlist.name || playlist.title || '', playlist.thumbnail_url),
+          creator: playlist.creator || 'Healing Sounds',
+          plays: playlist.plays || 0,
+          likes: playlist.likes || 0,
+          trackCount: tracks.length,
+          duration: formattedDuration
+        };
+      });
+
+      return { data: transformedPlaylists, error: null };
+    } catch (error) {
+      console.error('❌ Failed to fetch home screen playlists:', error);
       return { data: [], error };
     }
   }

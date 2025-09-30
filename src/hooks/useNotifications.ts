@@ -127,7 +127,6 @@ export const useNotifications = () => {
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log('🔔 Setting up notification subscriptions for user:', user.id);
 
     // Subscribe to new notifications
     const notificationChannel = supabase

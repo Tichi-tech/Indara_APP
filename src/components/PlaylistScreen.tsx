@@ -26,6 +26,7 @@ interface Track {
 }
 
 interface PlaylistScreenProps {
+  playlistId: string;
   playlistName: string;
   playlistDescription?: string;
   onBack: () => void;
@@ -36,6 +37,7 @@ interface PlaylistScreenProps {
 }
 
 const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
+  playlistId,
   playlistName,
   playlistDescription,
   onBack,
@@ -51,15 +53,15 @@ const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [likingTracks, setLikingTracks] = useState<Set<string>>(new Set());
 
-  // Fetch featured tracks
+  // Fetch playlist tracks
   useEffect(() => {
     const fetchTracks = async () => {
       try {
         setLoading(true);
-        const { data, error } = await musicApi.getFeaturedTracks();
+        const { data, error } = await musicApi.getPlaylistTracks(playlistId);
 
         if (error) {
-          console.error('Error fetching featured tracks:', error);
+          console.error('Error fetching playlist tracks:', error);
           // Don't set error for empty data - just show empty state
           setTracks([]);
         } else {
@@ -74,8 +76,10 @@ const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
       }
     };
 
-    fetchTracks();
-  }, []);
+    if (playlistId) {
+      fetchTracks();
+    }
+  }, [playlistId]);
 
   const handlePlayTrack = async (track: Track) => {
     if (!track.audio_url) {
@@ -225,8 +229,8 @@ const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               <div className="w-20 h-20 bg-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
                 <span className="text-gray-400 text-2xl">♪</span>
               </div>
-              <p className="text-black text-lg font-medium mb-2">No tracks available yet</p>
-              <p className="text-gray-600">Admin will add featured tracks soon!</p>
+              <p className="text-black text-lg font-medium mb-2">No tracks in this playlist</p>
+              <p className="text-gray-600">This playlist is currently empty.</p>
             </div>
           )}
         </main>

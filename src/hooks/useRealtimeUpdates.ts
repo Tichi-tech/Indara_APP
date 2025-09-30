@@ -14,7 +14,6 @@ export const useRealtimeUpdates = (handlers: RealtimeUpdateHandlers) => {
   const setupSubscriptions = useCallback(() => {
     if (!user?.id) return () => {};
 
-    console.log('🔔 Setting up real-time subscriptions for user:', user.id);
 
     // Subscribe to job status updates for current user
     const jobChannel = supabase
@@ -72,7 +71,6 @@ export const useRealtimeUpdates = (handlers: RealtimeUpdateHandlers) => {
 
     // Cleanup function
     return () => {
-      console.log('🔕 Cleaning up real-time subscriptions');
       supabase.removeChannel(jobChannel);
       supabase.removeChannel(communityChannel);
       supabase.removeChannel(userTracksChannel);

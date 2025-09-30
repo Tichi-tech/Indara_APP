@@ -11,8 +11,7 @@ export function useAuth() {
     // Get initial session
     const initAuth = async () => {
       try {
-        console.log('🔄 AUTH INIT: Checking for existing session...')
-        
+          
         // Check if we're returning from OAuth
         const urlParams = new URLSearchParams(window.location.search)
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
@@ -42,14 +41,12 @@ export function useAuth() {
           console.warn('⚠️ AUTH INIT: No auth session found:', error.message)
           setUser(null)
         } else {
-          console.log('👤 AUTH INIT: Current user:', user ? `Authenticated (${user.email})` : 'Not authenticated')
           setUser(user)
         }
       } catch (error) {
         console.warn('❌ AUTH INIT: Auth initialization failed:', error)
         setUser(null)
       } finally {
-        console.log('🏁 AUTH INIT: Loading complete')
         setLoading(false)
       }
     }
@@ -58,27 +55,8 @@ export function useAuth() {
 
     // Listen for auth changes
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
-      console.log('🔄 AUTH STATE CHANGE DETECTED:')
-      console.log('🔄 Event:', event)
-      console.log('🔄 Session exists:', session ? 'YES' : 'NO')
-      console.log('🔄 Current URL when auth change detected:', window.location.href)
-      console.log('🔄 URL search params:', window.location.search)
-      console.log('🔄 URL hash:', window.location.hash)
-      
-      if (session) {
-        console.log('🔄 Session data:', {
-          access_token: session.access_token ? 'Present' : 'Missing',
-          user_id: session.user?.id,
-          user_email: session.user?.email,
-          provider: session.user?.app_metadata?.provider
-        })
-        console.log('🔄 User data:', session.user)
-      }
-      console.log('🔄 Timestamp:', new Date().toISOString())
-      
       // Clear URL parameters after successful OAuth
       if (event === 'SIGNED_IN' && session && (window.location.hash || window.location.search.includes('code'))) {
-        console.log('🧹 OAUTH CALLBACK: Cleaning up URL after successful login')
         const cleanUrl = window.location.origin + window.location.pathname
         window.history.replaceState({}, document.title, cleanUrl)
       }
@@ -86,31 +64,6 @@ export function useAuth() {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
-      
-      if (event === 'SIGNED_IN' && session?.user) {
-        console.log('✅ LOGIN SUCCESS: OAuth login successful')
-        console.log('✅ User ID:', session?.user?.id)
-        console.log('✅ User email:', session?.user?.email)
-        console.log('✅ Provider:', session?.user?.app_metadata?.provider)
-      } else if (event === 'SIGNED_OUT') {
-        console.log('👋 LOGOUT: User signed out')
-      } else if (event === 'TOKEN_REFRESHED') {
-        console.log('🔄 TOKEN: Token refreshed')
-      } else if (event === 'INITIAL_SESSION') {
-        console.log('🔄 INITIAL_SESSION: Checking for existing session on page load')
-        if (!session) {
-          console.log('⚠️ INITIAL_SESSION: No session found, but checking URL for OAuth callback...')
-          // Check if we're on an OAuth callback URL
-          const urlParams = new URLSearchParams(window.location.search)
-          const hashParams = new URLSearchParams(window.location.hash.substring(1))
-          console.log('🔍 URL params:', Object.fromEntries(urlParams))
-          console.log('🔍 Hash params:', Object.fromEntries(hashParams))
-          
-          if (hashParams.get('access_token') || urlParams.get('code')) {
-            console.log('🔍 OAuth callback detected in URL, waiting for session...')
-          }
-        }
-      }
     })
 
     return () => subscription.unsubscribe()
