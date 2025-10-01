@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@indara/shared": ["packages/shared/src"],
+      "@indara/shared/*": ["packages/shared/src/*"]
+    }
+  }
+}

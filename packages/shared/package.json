@@ -1,0 +1,13 @@
+{
+  "name": "@indara/shared",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4"
+  }
+}

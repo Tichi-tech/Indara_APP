@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Indara - AI Healing Music</title>
+    <meta name="description" content="From your mind to healing music. Create personalized AI-generated music for wellness and meditation." />
+    <style>
+      /* Prevent flash of unstyled content */
+      body {
+        margin: 0;
+        background: #ffffff;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        /* iOS keyboard optimizations */
+        -webkit-text-size-adjust: 100%;
+        -webkit-tap-highlight-color: transparent;
+        overscroll-behavior: none;
+      }
+      #root {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* iOS Safari keyboard fix */
+      @supports (-webkit-touch-callout: none) {
+        .ios-keyboard-fix {
+          padding-bottom: env(keyboard-inset-height, 0);
+        }
+      }
+
+      /* Prevent zoom on input focus for iOS */
+      input, textarea, select {
+        font-size: 16px !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
