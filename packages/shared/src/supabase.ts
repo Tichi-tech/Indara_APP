@@ -770,7 +770,7 @@ export const musicApi = {
       const { data: newJob, error: jobError } = await musicApi.generateMusic(jobData);
 
       if (jobError) {
-        throw new Error(`Failed to create retry job: ${jobError.message}`);
+        throw new Error(`Failed to create retry job: ${(jobError as any)?.message || 'Unknown error'}`);
       }
 
       console.log('✅ Retry job created:', newJob);
@@ -1218,11 +1218,11 @@ export const musicApi = {
           filter: `track_id=in.(${trackIds.join(',')})`
         },
         async (payload) => {
-          if (payload.new?.track_id) {
+          if ((payload.new as any)?.track_id) {
             // Fetch updated stats for this track
-            const { data } = await musicApi.getTrackStats(payload.new.track_id);
+            const { data } = await musicApi.getTrackStats((payload.new as any).track_id);
             if (data) {
-              onStatsUpdate(payload.new.track_id, data);
+              onStatsUpdate((payload.new as any).track_id, data);
             }
           }
         }
@@ -1241,7 +1241,7 @@ export const musicApi = {
           filter: `track_id=in.(${trackIds.join(',')})`
         },
         async (payload) => {
-          const trackId = payload.new?.track_id || payload.old?.track_id;
+          const trackId = (payload.new as any)?.track_id || (payload.old as any)?.track_id;
           if (trackId) {
             // Fetch updated stats for this track
             const { data } = await musicApi.getTrackStats(trackId);

@@ -5,7 +5,7 @@
 export * from './types/index.js';
 
 // Supabase client and API
-export { supabase, auth, musicApi } from './supabase.js';
+export { supabase, auth, musicApi, db, isAdminUser } from './supabase.js';
 
 // Utilities
 export { getSmartThumbnail } from './utils/thumbnailMatcher.js';

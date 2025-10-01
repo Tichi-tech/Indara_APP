@@ -2,25 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Search, Music, Plus, Heart, Play, Pause } from 'lucide-react';
 import BottomNav from './BottomNav';
 import CreateMusicScreen from './CreateMusicScreen';
-import { musicApi } from '../lib/supabase';
+import { musicApi, getSmartThumbnail, type Song } from '@indara/shared';
 import { useAuth } from '../hooks/useAuth';
 import { useMusicPlayer } from '../hooks/useMusicPlayer';
-
-interface Song {
-  id: string;
-  title: string;
-  description: string;
-  tags: string;
-  plays: number;
-  likes: number;
-  image: string;
-  version: string;
-  isPublic: boolean;
-  createdAt: string;
-  creator?: string;
-  isLiked?: boolean;
-  duration?: string;
-}
 
 interface MySongsScreenProps {
   onBack: () => void;

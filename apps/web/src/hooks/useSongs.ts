@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './useAuth'
-import { musicApi } from '../lib/supabase'
+import { musicApi, db } from '../lib/supabase'
 import { getSmartThumbnail } from '../utils/thumbnailMatcher'
 
 export interface Song {
@@ -144,7 +144,7 @@ export function useSongs() {
         status: 'completed'
       }
 
-      const { data, error } = await musicApi.createSong(dbSongData)
+      const { data, error } = await db.createSong(dbSongData)
       
       if (error) {
         console.warn('Database save failed, using local storage:', error)
