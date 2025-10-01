@@ -32,12 +32,12 @@ const BottomNav: React.FC<BottomNavProps> = ({
 
   return (
     <nav
-      className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] bg-white border-t border-gray-100 [padding-bottom:env(safe-area-inset-bottom)] z-50 ${className}`}
+      className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[375px] bg-white border-t border-gray-100 [padding-bottom:env(safe-area-inset-bottom)] z-50 ${className}`}
       role="navigation"
       aria-label="Bottom"
     >
-      <div className="px-4 py-3">
-        <div className="flex items-center justify-around">
+      <div className="px-2 sm:px-4 py-3">
+        <div className="flex items-center justify-between max-w-sm mx-auto">
           {/* Home */}
           <button
             className={base}

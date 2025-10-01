@@ -92,11 +92,14 @@ const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
       if (currentTrack?.id === track.id) {
         await togglePlayPause();
       } else {
+        // Record play in database
+        await musicApi.recordPlay(user?.id || null, track.id);
+
         // Play new track
         await playTrack({
           id: track.id,
           title: track.title,
-          artist: track.profiles?.display_name || 'Unknown Artist',
+          artist: 'Artist',
           duration: track.duration ? parseInt(track.duration.split(':')[0]) * 60 + parseInt(track.duration.split(':')[1]) : undefined,
           audio_url: track.audio_url,
           thumbnail_url: track.thumbnail_url

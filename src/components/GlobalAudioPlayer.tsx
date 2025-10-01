@@ -1,28 +1,22 @@
 import React from 'react';
-import { Play, Pause, Music, SkipBack, SkipForward, RotateCcw } from 'lucide-react';
+import { Play, Pause, Music, SkipBack, SkipForward } from 'lucide-react';
 import { useGlobalAudio } from '../hooks/useMusicPlayer';
 
-export const GlobalAudioPlayer: React.FC = () => {
+interface GlobalAudioPlayerProps {
+  onPlayerClick?: () => void;
+}
+
+export const GlobalAudioPlayer: React.FC<GlobalAudioPlayerProps> = ({ onPlayerClick }) => {
   const {
     currentTrack,
     isPlaying,
-    volume,
-    currentTime,
-    duration,
     queue,
     currentIndex,
-    isMuted,
     isLoading,
     pause,
     resume,
-    stop,
-    setVolume,
-    seek,
-    toggleMute,
     playNext,
-    playPrevious,
-    formatTime,
-    progress
+    playPrevious
   } = useGlobalAudio();
 
   // Don't show player if no track is loaded
@@ -38,28 +32,15 @@ export const GlobalAudioPlayer: React.FC = () => {
     }
   };
 
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setVolume(parseFloat(e.target.value) / 100);
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = (parseFloat(e.target.value) / 100) * duration;
-    seek(newTime);
-  };
-
-  const handleRestart = () => {
-    seek(0);
-    if (!isPlaying) {
-      resume();
-    }
-  };
-
   return (
-    <div className="absolute bottom-16 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
-      <div className="w-full px-4 py-3 safe-area-padding-bottom">
+    <div className="fixed bottom-[4.5rem] left-1/2 -translate-x-1/2 w-full max-w-[375px] z-[60] bg-white/70 backdrop-blur-sm border-t border-gray-200/50 shadow-lg">
+      <div className="w-full px-4 py-2 safe-area-padding-bottom">
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Track Info - Takes most space */}
-            <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div
+              className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
+              onClick={onPlayerClick}
+            >
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex-shrink-0 overflow-hidden">
                 {currentTrack.thumbnail_url ? (
                   <img
@@ -129,25 +110,6 @@ export const GlobalAudioPlayer: React.FC = () => {
               >
                 <SkipForward className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>
-            </div>
-          </div>
-
-        {/* Progress Bar */}
-        <div className="mt-2 sm:mt-3">
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={progress}
-              onChange={handleSeek}
-              className="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer slider"
-              style={{
-                background: `linear-gradient(to right, #000000 0%, #000000 ${progress}%, #d1d5db ${progress}%, #d1d5db 100%)`,
-              }}
-            />
-            <div className="flex justify-between items-center text-[10px] sm:text-xs text-gray-500 mt-1">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
             </div>
           </div>
       </div>

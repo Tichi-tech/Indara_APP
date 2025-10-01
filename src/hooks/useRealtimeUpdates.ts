@@ -33,7 +33,7 @@ export const useRealtimeUpdates = (handlers: RealtimeUpdateHandlers) => {
       )
       .subscribe();
 
-    // Subscribe to new featured community tracks
+    // Subscribe to new community tracks (both featured and published)
     const communityChannel = supabase
       .channel('community_tracks')
       .on(
@@ -41,12 +41,31 @@ export const useRealtimeUpdates = (handlers: RealtimeUpdateHandlers) => {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'generated_tracks',
-          filter: 'is_featured=eq.true'
+          table: 'generated_tracks'
         },
         (payload) => {
-          console.log('🎵 New featured track:', payload.new);
-          handlers.onNewFeaturedTrack?.(payload.new);
+          // Check if the track is either featured or published
+          const track = payload.new;
+          if (track.is_featured === true || track.is_published === true) {
+            console.log('🎵 New community track (featured or published):', track);
+            handlers.onNewFeaturedTrack?.(track);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'generated_tracks'
+        },
+        (payload) => {
+          // Check if the track became featured or published
+          const track = payload.new;
+          if (track.is_featured === true || track.is_published === true) {
+            console.log('🎵 Track updated to community (featured or published):', track);
+            handlers.onNewFeaturedTrack?.(track);
+          }
         }
       )
       .subscribe();

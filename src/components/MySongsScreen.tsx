@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Search, Music, Plus, Filter, Heart, Play, Pause, Share2, Lock } from 'lucide-react';
+import { ArrowLeft, Search, Music, Plus, Heart, Play, Pause } from 'lucide-react';
 import BottomNav from './BottomNav';
 import CreateMusicScreen from './CreateMusicScreen';
 import { musicApi } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useMusicPlayer } from '../hooks/useMusicPlayer';
-import { getSmartThumbnail } from '../utils/thumbnailMatcher';
 
 interface Song {
   id: string;
@@ -28,9 +27,7 @@ interface MySongsScreenProps {
   onCreateMusic: () => void;
   onAccountSettings: () => void;
   onInbox: () => void;
-  userName: string;
   userSongs: Song[];
-  onPlaySong: (song: Song) => void;
 }
 
 const MySongsScreen: React.FC<MySongsScreenProps> = ({
@@ -38,13 +35,10 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
   onCreateMusic,
   onAccountSettings,
   onInbox,
-  userName: _userName,
-  userSongs,
-  onPlaySong: _onPlaySong
+  userSongs
 }) => {
   const { user } = useAuth();
   const { currentTrack, isPlaying, playTrack, togglePlayPause } = useMusicPlayer();
-  const [activeFilter, setActiveFilter] = useState('All');
   const [showCreateScreen, setShowCreateScreen] = useState(false);
   const [likingTracks, setLikingTracks] = useState<Set<string>>(new Set());
   const [featuredTracks, setFeaturedTracks] = useState<Song[]>([]);
@@ -54,7 +48,6 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
 
-  const filters = ['All', 'Music', 'Meditation'];
 
   // Load playlists from database
   const loadUserPlaylists = async () => {
@@ -67,7 +60,7 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
           id: playlist.id,
           name: playlist.name,
           trackCount: playlist.track_count || 0,
-          image: '/thumbnails/playlist-default.png' // Default playlist image
+          image: '/thumbnails/playlist-default.svg' // Default playlist image
         }));
         setUserPlaylists(transformedPlaylists);
       }
@@ -81,53 +74,39 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
     loadUserPlaylists();
   }, [user]);
 
-  // Fetch user's own tracks
+  // Use userSongs prop directly instead of fetching again
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user) return;
+    setLoading(true);
 
-      try {
-        setLoading(true);
+    // Filter userSongs to only show tracks with audio URLs
+    const playableTracks = userSongs.filter(track => track.audio_url);
+    setFeaturedTracks(playableTracks);
 
-        // Get user's own tracks
-        const { data: tracks, error: tracksError } = await musicApi.getUserTracks(user.id);
+    setLoading(false);
+  }, [userSongs]);
 
-        if (!tracksError && tracks) {
-          const transformedTracks = tracks.map(track => ({
-            id: track.id,
-            title: track.title || 'Untitled',
-            description: track.prompt || track.admin_notes || '',
-            tags: track.style || '',
-            plays: track.play_count || 0,
-            likes: track.like_count || 0,
-            image: track.thumbnail_url || getSmartThumbnail(
-              track.title || 'Untitled',
-              track.prompt || track.admin_notes || '',
-              track.style || '',
-              track.id
-            ),
-            version: '1.0',
-            isPublic: track.is_published || false,
-            createdAt: track.created_at,
-            creator: 'You',
-            duration: track.duration || '3:45',
-            audio_url: track.audio_url
-          }));
-          setFeaturedTracks(transformedTracks);
-        } else {
-          setFeaturedTracks([]);
-        }
+  // Set up real-time subscriptions for track stats
+  useEffect(() => {
+    if (featuredTracks.length === 0) return;
 
-      } catch (err) {
-        console.error('Error fetching user data:', err);
-        setFeaturedTracks([]);
-      } finally {
-        setLoading(false);
+    const trackIds = featuredTracks.map(track => track.id);
+
+    // Subscribe to real-time updates for track plays and likes
+    const unsubscribe = musicApi.subscribeToTrackStats(
+      trackIds,
+      (trackId: string, stats: { plays: number; likes: number }) => {
+        // Update the specific track with new stats
+        setFeaturedTracks(prev => prev.map(track =>
+          track.id === trackId
+            ? { ...track, plays: stats.plays, likes: stats.likes }
+            : track
+        ));
       }
-    };
+    );
 
-    fetchUserData();
-  }, [user]);
+    // Cleanup subscription on unmount or when tracks change
+    return unsubscribe;
+  }, [featuredTracks.map(t => t.id).join(',')]); // Only re-subscribe when track IDs change
 
   // Helper function to get first two words from title
   const getTwoWords = (title: string) => {
@@ -139,42 +118,15 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
     setShowCreateScreen(true);
   };
 
-  const handleLikeSong = async (song: Song) => {
-    if (!user?.id || likingTracks.has(song.id)) return;
-
-    setLikingTracks(prev => new Set([...prev, song.id]));
-
-    try {
-      const { data, error } = await musicApi.likeTrack(user.id, song.id);
-      if (error) {
-        console.error('Failed to toggle like:', error);
-      } else {
-        console.log(`Song ${data.liked ? 'liked' : 'unliked'}`);
-        // You might want to update the song's like status here
-        // or refetch the songs to get updated like counts
-      }
-    } catch (error) {
-      console.error('Error toggling like:', error);
-    } finally {
-      setLikingTracks(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(song.id);
-        return newSet;
-      });
-    }
-  };
-
   const handlePlaySong = async (song: Song) => {
-    if (!song.audio_url) {
-      console.warn('No audio URL for song:', song.title);
-      return;
-    }
-
     try {
       // If this song is currently playing, toggle pause/play
       if (currentTrack?.id === song.id) {
         await togglePlayPause();
       } else {
+        // Record play in database
+        await musicApi.recordPlay(user?.id || null, song.id);
+
         // Play new song
         await playTrack({
           id: song.id,
@@ -192,6 +144,37 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
 
   const handleCloseCreateScreen = () => {
     setShowCreateScreen(false);
+  };
+
+  // Handle like song
+  const handleLikeSong = async (song: Song) => {
+    if (!user?.id || likingTracks.has(song.id)) return;
+
+    setLikingTracks(prev => new Set([...prev, song.id]));
+
+    try {
+      const { data, error } = await musicApi.likeTrack(user.id, song.id);
+      if (error) {
+        console.error('Failed to toggle like:', error);
+      } else {
+        console.log(`Song ${data.liked ? 'liked' : 'unliked'}`);
+
+        // Update local song state immediately for responsive UI
+        setFeaturedTracks(prev => prev.map(s =>
+          s.id === song.id
+            ? { ...s, likes: s.likes + (data.liked ? 1 : -1), isLiked: data.liked }
+            : s
+        ));
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    } finally {
+      setLikingTracks(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(song.id);
+        return newSet;
+      });
+    }
   };
 
   // Handle publish/unpublish track
@@ -463,37 +446,14 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
           <div className="px-6">
             <h2 className="text-xl font-bold text-black mb-6">My songs</h2>
             
-            {/* Songs Count and Filter */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <Music className="w-5 h-5 text-black" />
-                <span className="text-black font-medium">{userSongs.length} songs</span>
-              </div>
-              <button className="flex items-center gap-2 text-black">
-                <span className="font-medium">Filter</span>
-                <Filter className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="flex gap-3 mb-8">
-              {filters.map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setActiveFilter(filter)}
-                  className={`px-6 py-3 rounded-full font-medium transition-colors ${
-                    activeFilter === filter
-                      ? 'bg-black text-white'
-                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                  }`}
-                >
-                  {filter}
-                </button>
-              ))}
+            {/* Songs Count */}
+            <div className="flex items-center gap-2 mb-6">
+              <Music className="w-5 h-5 text-black" />
+              <span className="text-black font-medium">{featuredTracks.length} songs</span>
             </div>
 
             {/* Empty State */}
-            {userSongs.length === 0 && (
+            {featuredTracks.length === 0 && (
               <div className="text-center py-12">
                 <div className="w-20 h-20 bg-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
                   <Music className="w-10 h-10 text-gray-400" />
@@ -509,9 +469,9 @@ const MySongsScreen: React.FC<MySongsScreenProps> = ({
             )}
 
             {/* Songs List */}
-            {userSongs.length > 0 && (
+            {featuredTracks.length > 0 && (
               <div className="space-y-4">
-                {userSongs.map((song) => (
+                {featuredTracks.map((song) => (
                   <div key={song.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
                     {/* Song Image */}
                     <div className="relative">

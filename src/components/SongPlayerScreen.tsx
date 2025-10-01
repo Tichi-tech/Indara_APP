@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Play, Share2, ThumbsUp, ChevronDown, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Play, Share2, ThumbsUp, ThumbsDown, MessageCircle, ChevronDown, RotateCcw } from 'lucide-react';
 import ShareSongScreen from './ShareSongScreen';
 import { useGlobalAudio } from '../hooks/useMusicPlayer';
+import { useAuth } from '../hooks/useAuth';
+import { musicApi } from '../lib/supabase';
 import { getSmartThumbnail } from '../utils/thumbnailMatcher';
 
 interface Song {
@@ -27,6 +29,7 @@ interface SongPlayerScreenProps {
 }
 
 const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onShareToHealing: _onShareToHealing }) => {
+  const { user } = useAuth();
   const {
     currentTrack,
     isPlaying,
@@ -40,8 +43,31 @@ const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onSha
   } = useGlobalAudio();
 
   const [isLiked, setIsLiked] = useState<boolean>(song.isLiked || false);
-  const [likes, setLikes] = useState<number>(2100);
+  const [likes, setLikes] = useState<number>(0);
+  const [isDisliked, setIsDisliked] = useState<boolean>(false);
+  const [dislikes, setDislikes] = useState<number>(42);
+  const [comments, setComments] = useState<number>(156);
   const [showShareScreen, setShowShareScreen] = useState(false);
+  const [loadingLike, setLoadingLike] = useState(false);
+
+  // Fetch real track stats when component mounts
+  useEffect(() => {
+    const fetchTrackStats = async () => {
+      if (!song.id) return;
+
+      try {
+        const { data: stats } = await musicApi.getTrackStats(song.id, user?.id || undefined);
+        if (stats) {
+          setLikes(stats.likes);
+          setIsLiked(stats.isLiked);
+        }
+      } catch (error) {
+        console.error('Failed to fetch track stats:', error);
+      }
+    };
+
+    fetchTrackStats();
+  }, [song.id, user?.id]);
 
   // Auto-play the song when component mounts if it's not already playing
   useEffect(() => {
@@ -71,9 +97,54 @@ const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onSha
     }
   };
 
-  const handleLike = () => {
-    setIsLiked(prev => !prev);
-    setLikes(prev => (isLiked ? prev - 1 : prev + 1));
+  const handleLike = async () => {
+    if (!user || loadingLike) return;
+
+    setLoadingLike(true);
+    try {
+      const { data, error } = await musicApi.likeTrack(user.id, song.id);
+
+      if (error) {
+        console.error('Failed to toggle like:', error);
+        return;
+      }
+
+      if (data) {
+        // Update local state based on database response
+        setIsLiked(data.liked);
+
+        // Refresh the like count by fetching fresh stats
+        const { data: freshStats } = await musicApi.getTrackStats(song.id, user.id);
+        if (freshStats) {
+          setLikes(freshStats.likes);
+        }
+
+        // If user likes, remove dislike
+        if (data.liked && isDisliked) {
+          setIsDisliked(false);
+          setDislikes(prev => prev - 1);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+    } finally {
+      setLoadingLike(false);
+    }
+  };
+
+  const handleDislike = () => {
+    setIsDisliked(prev => !prev);
+    setDislikes(prev => (isDisliked ? prev - 1 : prev + 1));
+    // If user dislikes, remove like
+    if (!isDisliked && isLiked) {
+      setIsLiked(false);
+      setLikes(prev => prev - 1);
+    }
+  };
+
+  const handleComment = () => {
+    console.log('Opening comments...');
+    // TODO: Implement comment functionality
   };
 
   const handleShare = () => setShowShareScreen(true);
@@ -170,10 +241,35 @@ const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onSha
           {/* Like Button */}
           <button
             onClick={handleLike}
+            disabled={!user || loadingLike}
+            className="w-14 h-14 bg-black/40 backdrop-blur-sm rounded-full flex flex-col items-center justify-center disabled:opacity-50"
+          >
+            {loadingLike ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <ThumbsUp className={`w-6 h-6 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
+                <span className="text-xs text-white mt-1 font-medium">{likes >= 1000 ? `${(likes/1000).toFixed(1)}k` : likes}</span>
+              </>
+            )}
+          </button>
+
+          {/* Dislike Button */}
+          <button
+            onClick={handleDislike}
             className="w-14 h-14 bg-black/40 backdrop-blur-sm rounded-full flex flex-col items-center justify-center"
           >
-            <ThumbsUp className={`w-6 h-6 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
-            <span className="text-xs text-white mt-1 font-medium">{likes >= 1000 ? `${(likes/1000).toFixed(1)}k` : likes}</span>
+            <ThumbsDown className={`w-6 h-6 ${isDisliked ? 'text-white fill-white' : 'text-white'}`} />
+            <span className="text-xs text-white mt-1 font-medium">{dislikes}</span>
+          </button>
+
+          {/* Comment Button */}
+          <button
+            onClick={handleComment}
+            className="w-14 h-14 bg-black/40 backdrop-blur-sm rounded-full flex flex-col items-center justify-center"
+          >
+            <MessageCircle className="w-6 h-6 text-white" />
+            <span className="text-xs text-white mt-1 font-medium">{comments}</span>
           </button>
 
           {/* Share Button */}

@@ -69,127 +69,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const { unreadCount } = useNotifications(); // Get real-time unread count
   const [featuredTracks, setFeaturedTracks] = useState<Song[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [likingTracks, setLikingTracks] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
-  // Sample data with smart thumbnails
-  const musicTracks: Song[] = [
-    {
-      id: 'h1',
-      title: 'Peaceful Morning',
-      description: 'Gentle piano with nature sounds',
-      tags: 'piano, nature, morning',
-      plays: 1200,
-      likes: 89,
-      image: getSmartThumbnail('Peaceful Morning', 'Gentle piano with nature sounds', 'piano, nature, morning', 'h1'),
-      version: '1.0',
-      isPublic: true,
-      createdAt: '2024-01-15',
-      creator: 'Sarah.K',
-      duration: '4:32',
-    },
-    {
-      id: 'h2',
-      title: 'Deep Meditation',
-      description: 'Lo-fi sounds with ambient',
-      tags: 'ambient, meditation, lofi',
-      plays: 2800,
-      likes: 156,
-      image: getSmartThumbnail('Deep Meditation', 'Lo-fi sounds with ambient', 'ambient, meditation, lofi', 'h2'),
-      version: '1.0',
-      isPublic: true,
-      createdAt: '2024-01-14',
-      creator: 'Sarah.K',
-      duration: '6:15',
-    },
-    {
-      id: 'h3',
-      title: 'Ocean Waves',
-      description: 'Natural ocean sounds for relaxation',
-      tags: 'nature, ocean, relaxation',
-      plays: 3200,
-      likes: 201,
-      image: getSmartThumbnail('Ocean Waves', 'Natural ocean sounds for relaxation', 'nature, ocean, relaxation', 'h3'),
-      version: '1.0',
-      isPublic: true,
-      createdAt: '2024-01-13',
-      creator: 'Nature.Sounds',
-      duration: '8:45',
-    },
-    {
-      id: 'h4',
-      title: 'Forest Whispers',
-      description: 'Gentle forest ambience',
-      tags: 'forest, nature, ambient',
-      plays: 1800,
-      likes: 134,
-      image: getSmartThumbnail('Forest Whispers', 'Gentle forest ambience', 'forest, nature, ambient', 'h4'),
-      version: '1.0',
-      isPublic: true,
-      createdAt: '2024-01-12',
-      creator: 'Forest.Therapy',
-      duration: '5:20',
-    },
-  ];
-
-  const meditationTracks: Song[] = [
-    {
-      id: 'm1',
-      title: 'Mindful Breathing',
-      description: 'Guided breathing meditation for beginners',
-      tags: 'breathing, mindfulness, guided',
-      plays: 4200,
-      likes: 312,
-      image: getSmartThumbnail('Mindful Breathing', 'Guided breathing meditation for beginners', 'breathing, mindfulness, guided', 'm1'),
-      version: '1.0',
-      isPublic: true,
-      createdAt: '2024-01-16',
-      creator: 'Zen.Master',
-      duration: '10:00',
-    },
-    {
-      id: 'm2',
-      title: 'Body Scan Relaxation',
-      description: 'Progressive muscle relaxation technique',
-      tags: 'body scan, relaxation, progressive',
-      plays: 3600,
-      likes: 278,
-      image: getSmartThumbnail('Body Scan Relaxation', 'Progressive muscle relaxation technique', 'body scan, relaxation, progressive', 'm2'),
-      version: '1.0',
-      isPublic: true,
-      createdAt: '2024-01-15',
-      creator: 'Calm.Guide',
-      duration: '15:30',
-    },
-    {
-      id: 'm3',
-      title: 'Chakra Alignment',
-      description: 'Healing frequencies for chakra balancing',
-      tags: 'chakra, healing, frequencies',
-      plays: 2900,
-      likes: 189,
-      image: getSmartThumbnail('Chakra Alignment', 'Healing frequencies for chakra balancing', 'chakra, healing, frequencies', 'm3'),
-      version: '1.0',
-      isPublic: true,
-      createdAt: '2024-01-14',
-      creator: 'Energy.Healer',
-      duration: '20:15',
-    },
-    {
-      id: 'm4',
-      title: 'Sleep Meditation',
-      description: 'Gentle meditation to help you fall asleep',
-      tags: 'sleep, bedtime, gentle',
-      plays: 5100,
-      likes: 423,
-      image: getSmartThumbnail('Sleep Meditation', 'Gentle meditation to help you fall asleep', 'sleep, bedtime, gentle', 'm4'),
-      version: '1.0',
-      isPublic: true,
-      createdAt: '2024-01-13',
-      creator: 'Dream.Guide',
-      duration: '25:00',
-    },
-  ];
 
   // Fetch featured tracks on component mount
   useEffect(() => {
@@ -203,31 +84,41 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           musicApi.getHomeScreenPlaylists()
         ]);
 
-        // Handle tracks
+        // Handle tracks - display all published and featured tracks from database
         if (!tracksResult.error && tracksResult.data) {
-          // Transform backend data to Song format
-          const transformedTracks = tracksResult.data.map(track => ({
-            id: track.id,
-            title: track.title || 'Untitled',
-            description: track.prompt || track.admin_notes || '',
-            tags: track.style || '',
-            plays: Math.floor(Math.random() * 1000), // Random until we have real play counts
-            likes: Math.floor(Math.random() * 100),  // Random until we have real like counts
-            image: track.thumbnail_url || getSmartThumbnail(
-              track.title || 'Untitled',
-              track.prompt || '',
-              track.style || '',
-              track.id
-            ),
-            version: '1.0',
-            isPublic: true,
-            createdAt: track.created_at,
-            creator: 'Community',
-            duration: track.duration || '3:45',
-            audio_url: track.audio_url
-          }));
+
+          // Transform backend data to Song format with real stats
+          const transformedTracksPromises = tracksResult.data.map(async track => {
+            // Get real play/like counts for each track
+            const { data: stats } = await musicApi.getTrackStats(track.id, user?.id || null);
+
+            return {
+              id: track.id,
+              title: track.title || 'Untitled',
+              description: track.prompt || track.admin_notes || '',
+              tags: track.style || '',
+              plays: stats?.plays || 0, // Real play counts from database
+              likes: stats?.likes || 0, // Real like counts from database
+              isLiked: stats?.isLiked || false, // Real like status for current user
+              image: getSmartThumbnail(
+                track.title || 'Untitled',
+                track.prompt || '',
+                track.style || '',
+                track.id
+              ),
+              version: '1.0',
+              isPublic: true,
+              createdAt: track.created_at,
+              creator: track.display_name || 'Community Artist', // Use display_name from tracks_with_profiles
+              duration: track.duration || '3:45',
+              audio_url: track.audio_url
+            };
+          });
+
+          const transformedTracks = await Promise.all(transformedTracksPromises);
           setFeaturedTracks(transformedTracks);
         } else {
+          console.warn('⚠️ No tracks returned from database or error occurred:', tracksResult.error);
           setFeaturedTracks([]);
         }
 
@@ -249,6 +140,29 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     fetchData();
   }, []);
 
+  // Set up real-time subscriptions for track stats
+  useEffect(() => {
+    if (featuredTracks.length === 0) return;
+
+    const trackIds = featuredTracks.map(track => track.id);
+
+    // Subscribe to real-time updates for track plays and likes
+    const unsubscribe = musicApi.subscribeToTrackStats(
+      trackIds,
+      (trackId: string, stats: { plays: number; likes: number }) => {
+        // Update the specific track with new stats
+        setFeaturedTracks(prev => prev.map(track =>
+          track.id === trackId
+            ? { ...track, plays: stats.plays, likes: stats.likes }
+            : track
+        ));
+      }
+    );
+
+    // Cleanup subscription on unmount or when tracks change
+    return unsubscribe;
+  }, [featuredTracks.map(t => t.id).join(',')]); // Only re-subscribe when track IDs change
+
   // Handle play track
   const handlePlayTrack = async (track: Song) => {
     if (!track.audio_url) {
@@ -260,6 +174,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       if (currentTrack?.id === track.id) {
         await togglePlayPause();
       } else {
+        // Record play in database
+        await musicApi.recordPlay(user?.id || null, track.id);
+
+        // Start playing the track
         await playTrack({
           id: track.id,
           title: track.title,
@@ -274,38 +192,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     }
   };
 
-  // Handle like track
-  const handleLikeTrack = async (track: Song) => {
-    if (!user?.id || likingTracks.has(track.id)) return;
-
-    setLikingTracks(prev => new Set([...prev, track.id]));
-
-    try {
-      const { data, error } = await musicApi.likeTrack(user.id, track.id);
-      if (error) {
-        console.error('Failed to toggle like:', error);
-      } else {
-        console.log(`Track ${data.liked ? 'liked' : 'unliked'}`);
-
-        // Send notification if track was liked (and not owned by current user)
-        if (data.liked && track.creator !== user.email) {
-          // Find track owner and send notification
-          // Note: You'll need to implement a way to get track owner's user_id
-          // For now, we'll use a placeholder
-          console.log('Would send like notification for track:', track.title);
-          // await musicApi.notifyTrackLiked(trackOwnerId, user.id, track.id, track.title);
-        }
-      }
-    } catch (error) {
-      console.error('Error toggling like:', error);
-    } finally {
-      setLikingTracks(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(track.id);
-        return newSet;
-      });
-    }
-  };
 
   // Helper function to truncate username
   const truncateUsername = (username: string, maxLength: number = 8) => {
@@ -325,7 +211,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       tags: track.style || '',
       plays: 0, // New track starts with 0 plays
       likes: 0, // New track starts with 0 likes
-      image: track.thumbnail_url || getSmartThumbnail(
+      image: getSmartThumbnail(
         track.title || 'Untitled',
         track.prompt || '',
         track.style || '',
@@ -334,7 +220,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       version: '1.0',
       isPublic: true,
       createdAt: track.created_at,
-      creator: 'Community',
+      creator: track.display_name || 'Community Artist',
       duration: track.duration || '3:45',
       audio_url: track.audio_url
     };
@@ -432,25 +318,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                               <span className="text-gray-500 text-xs truncate">@{truncateUsername(track.creator || '')}</span>
                             </div>
                             <div className="flex items-center gap-2 text-xs text-gray-500 shrink-0">
-                              <button
-                                onClick={() => handlePlayTrack(track)}
-                                className="flex items-center gap-0.5 hover:text-purple-500 transition-colors"
-                              >
+                              <div className="flex items-center gap-0.5">
                                 <Play className="w-2.5 h-2.5" aria-hidden="true" />
                                 <span className="text-[10px]">{track.plays}</span>
-                              </button>
-                              <button
-                                onClick={() => handleLikeTrack(track)}
-                                disabled={likingTracks.has(track.id)}
-                                className={`flex items-center gap-0.5 transition-colors ${
-                                  likingTracks.has(track.id)
-                                    ? 'opacity-50 cursor-not-allowed'
-                                    : 'hover:text-red-500'
-                                }`}
-                              >
+                              </div>
+                              <div className="flex items-center gap-0.5">
                                 <Heart className="w-2.5 h-2.5" aria-hidden="true" />
                                 <span className="text-[10px]">{track.likes}</span>
-                              </button>
+                              </div>
                             </div>
                           </div>
                         </div>

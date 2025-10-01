@@ -439,6 +439,7 @@ export const isAdminUser = (user: any): boolean => {
   );
 };
 
+
 export const musicApi = {
   // Music Generation Functions
   generateMusic: async (params: {
@@ -608,24 +609,23 @@ export const musicApi = {
   likeTrack: async (userId: string, trackId: string) => {
     try {
       // Check if already liked
-      const { data: existingLike, error: checkError } = await supabase
+      const { data: existingLikes, error: checkError } = await supabase
         .from('track_likes')
         .select('id')
         .eq('user_id', userId)
-        .eq('track_id', trackId)
-        .single();
+        .eq('track_id', trackId);
 
-      if (checkError && checkError.code !== 'PGRST116') throw checkError;
+      if (checkError) throw checkError;
 
-      if (existingLike) {
+      if (existingLikes && existingLikes.length > 0) {
         // Unlike
         const { error } = await supabase
           .from('track_likes')
           .delete()
-          .eq('id', existingLike.id);
+          .eq('id', existingLikes[0].id);
 
         if (error) throw error;
-        return { data: { liked: false }, error: null };
+        return { data: { liked: false, trackId }, error: null };
       } else {
         // Like
         const { data, error } = await supabase
@@ -635,7 +635,7 @@ export const musicApi = {
           .single();
 
         if (error) throw error;
-        return { data: { liked: true }, error: null };
+        return { data: { liked: true, trackId }, error: null };
       }
     } catch (error) {
       console.error('❌ Failed to toggle like:', error);
@@ -662,32 +662,56 @@ export const musicApi = {
     }
   },
 
-  getTrackStats: async (trackId: string) => {
+  getTrackStats: async (trackId: string, userId?: string) => {
     try {
-      const [playsResult, likesResult] = await Promise.all([
-        supabase
-          .from('track_plays')
-          .select('id, created_at')
-          .eq('track_id', trackId),
-        supabase
+      // Get total likes count
+      const { count: likesCount, error: likesError } = await supabase
+        .from('track_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('track_id', trackId);
+
+      if (likesError) {
+        console.error('❌ Failed to get likes count:', likesError);
+      }
+
+      // Get total plays count
+      const { count: playsCount, error: playsError } = await supabase
+        .from('track_plays')
+        .select('*', { count: 'exact', head: true })
+        .eq('track_id', trackId);
+
+      if (playsError) {
+        console.error('❌ Failed to get plays count:', playsError);
+      }
+
+      // Check if current user has liked this track
+      let isLiked = false;
+      if (userId) {
+        const { data: userLike, error: userLikeError } = await supabase
           .from('track_likes')
           .select('id')
           .eq('track_id', trackId)
-      ]);
+          .eq('user_id', userId)
+          .maybeSingle();
 
-      if (playsResult.error) throw playsResult.error;
-      if (likesResult.error) throw likesResult.error;
+        if (userLikeError) {
+          console.error('❌ Failed to check user like status:', userLikeError);
+        } else {
+          isLiked = !!userLike;
+        }
+      }
 
       return {
         data: {
-          plays: playsResult.data?.length || 0,
-          likes: likesResult.data?.length || 0
+          plays: playsCount || 0,
+          likes: likesCount || 0,
+          isLiked: isLiked
         },
         error: null
       };
     } catch (error) {
       console.error('❌ Failed to get track stats:', error);
-      return { data: { plays: 0, likes: 0 }, error };
+      return { data: { plays: 0, likes: 0, isLiked: false }, error };
     }
   },
 
@@ -709,6 +733,52 @@ export const musicApi = {
     } catch (error) {
       console.error('❌ Failed to fetch user jobs:', error);
       return { data: [], error };
+    }
+  },
+
+  // Retry failed jobs or tracks without audio
+  retryTrackGeneration: async (trackId: string, userId: string) => {
+    try {
+      console.log('🔄 Retrying track generation for:', trackId);
+
+      // Get the original track details
+      const { data: track, error: trackError } = await supabase
+        .from('generated_tracks')
+        .select('*')
+        .eq('id', trackId)
+        .eq('user_id', userId)
+        .single();
+
+      if (trackError || !track) {
+        throw new Error('Track not found or not owned by user');
+      }
+
+      // If track already has audio, no need to retry
+      if (track.audio_url) {
+        console.log('✅ Track already has audio, no retry needed');
+        return { data: track, error: null };
+      }
+
+      // Create new job with same parameters as original
+      const jobData = {
+        user_text: track.prompt || track.title || 'Peaceful healing music',
+        duration_sec: 180, // Default 3 minutes
+        engine: 'suno',
+        style: track.style || 'Ambient'
+      };
+
+      const { data: newJob, error: jobError } = await musicApi.generateMusic(jobData);
+
+      if (jobError) {
+        throw new Error(`Failed to create retry job: ${jobError.message}`);
+      }
+
+      console.log('✅ Retry job created:', newJob);
+      return { data: newJob, error: null };
+
+    } catch (error) {
+      console.error('❌ Failed to retry track generation:', error);
+      return { data: null, error };
     }
   },
 
@@ -1005,25 +1075,35 @@ export const musicApi = {
     }
   },
 
-  // Get community tracks (both user-published and admin-featured)
-  getCommunityTracks: async () => {
+  // Get community tracks (both user-published and admin-featured) with display names
+  // Optimized for 10,000+ users with pagination and selective fields
+  getCommunityTracks: async (limit = 50, offset = 0) => {
     try {
       const { data, error } = await supabase
-        .from('generated_tracks')
-        .select('*')
+        .from('tracks_with_profiles')
+        .select(`
+          id,
+          title,
+          prompt,
+          admin_notes,
+          style,
+          duration,
+          audio_url,
+          created_at,
+          is_published,
+          is_featured,
+          admin_rating,
+          user_id,
+          display_name
+        `)
         .or('is_published.eq.true,is_featured.eq.true')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
 
       if (error) throw error;
-
-      // Filter out any tracks that are neither published nor featured (handle NULL values)
-      const filteredData = (data || []).filter(track =>
-        track.is_published === true || track.is_featured === true
-      );
-
-      return { data: filteredData, error: null };
+      return { data: data || [], error: null };
     } catch (error) {
-      console.error('❌ Failed to fetch community tracks:', error);
+      console.error('Failed to fetch community tracks:', error);
       return { data: [], error };
     }
   },
@@ -1040,7 +1120,7 @@ export const musicApi = {
       if (error) throw error;
       return { data: data || [], error: null };
     } catch (error) {
-      console.error('❌ Failed to fetch user tracks:', error);
+      console.error('Failed to fetch user tracks:', error);
       return { data: [], error };
     }
   },
@@ -1120,6 +1200,65 @@ export const musicApi = {
       console.error('❌ Failed to fetch direct messages:', error);
       return { data: [], error };
     }
+  },
+
+  // Real-time subscriptions for track stats
+  subscribeToTrackStats: (trackIds: string[], onStatsUpdate: (trackId: string, stats: { plays: number; likes: number }) => void) => {
+    const channels: any[] = [];
+
+    // Subscribe to track_plays changes
+    const playsChannel = supabase
+      .channel('track_plays_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'track_plays',
+          filter: `track_id=in.(${trackIds.join(',')})`
+        },
+        async (payload) => {
+          if (payload.new?.track_id) {
+            // Fetch updated stats for this track
+            const { data } = await musicApi.getTrackStats(payload.new.track_id);
+            if (data) {
+              onStatsUpdate(payload.new.track_id, data);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to track_likes changes
+    const likesChannel = supabase
+      .channel('track_likes_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'track_likes',
+          filter: `track_id=in.(${trackIds.join(',')})`
+        },
+        async (payload) => {
+          const trackId = payload.new?.track_id || payload.old?.track_id;
+          if (trackId) {
+            // Fetch updated stats for this track
+            const { data } = await musicApi.getTrackStats(trackId);
+            if (data) {
+              onStatsUpdate(trackId, data);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    channels.push(playsChannel, likesChannel);
+
+    // Return cleanup function
+    return () => {
+      channels.forEach(channel => supabase.removeChannel(channel));
+    };
   },
 
   // Get tracks for a specific playlist

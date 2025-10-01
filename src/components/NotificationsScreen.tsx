@@ -2,12 +2,21 @@ import React, { useState } from 'react';
 import { ArrowLeft, Bell, Music, Heart, MessageCircle, UserPlus, Settings, Star, Trash2 } from 'lucide-react';
 import { useNotifications, Notification } from '../hooks/useNotifications';
 import { useAuth } from '../hooks/useAuth';
+import BottomNav from './BottomNav';
 
 interface NotificationsScreenProps {
   onBack: () => void;
+  onCreateMusic?: () => void;
+  onMySongs?: () => void;
+  onAccountSettings?: () => void;
 }
 
-const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ onBack }) => {
+const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
+  onBack,
+  onCreateMusic,
+  onMySongs,
+  onAccountSettings
+}) => {
   const { user } = useAuth();
   const {
     notifications,
@@ -271,6 +280,18 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ onBack }) => 
           </div>
         )}
       </div>
+
+      {/* Bottom Navigation */}
+      <BottomNav
+        active="inbox"
+        onHome={onBack}
+        onLibrary={onMySongs || (() => {})}
+        onCreate={onCreateMusic || (() => {})}
+        onInbox={() => {}}
+        onAccount={onAccountSettings || (() => {})}
+        badgeCount={unreadCount}
+        accountInitial="N"
+      />
     </div>
   );
 };

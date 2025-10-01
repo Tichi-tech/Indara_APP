@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { useSongs } from './hooks/useSongs';
-import { AudioProvider } from './hooks/useMusicPlayer';
+import { AudioProvider, useGlobalAudio } from './hooks/useMusicPlayer';
 import GlobalAudioPlayer from './components/GlobalAudioPlayer';
 
 import WelcomeScreen from './components/WelcomeScreen';
@@ -96,9 +96,11 @@ const PROTECTED_SCREENS = new Set<Screen>([
   'meditationCreation',
 ]);
 
-function App() {
+// Inner component that has access to AudioProvider context
+function AppContent() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { songs, publicSongs, setSongs } = useSongs();
+  const { currentTrack } = useGlobalAudio();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
   const [isLoading, setIsLoading] = useState(true);
@@ -162,6 +164,30 @@ function App() {
   const handleRefreshProfile = useCallback(() => {
     // This will trigger useProfile hook to refresh when returning from edit
   }, []);
+
+  // Handle global player click to navigate to SongPlayerScreen
+  const handleGlobalPlayerClick = () => {
+    if (currentTrack) {
+      // Convert currentTrack to Song format for SongPlayerScreen
+      const song: Song = {
+        id: currentTrack.id,
+        title: currentTrack.title,
+        description: '', // Not available in currentTrack
+        tags: '', // Not available in currentTrack
+        plays: 0, // Not available in currentTrack
+        likes: 0, // Not available in currentTrack
+        image: currentTrack.thumbnail_url || '',
+        version: '1.0',
+        isPublic: true,
+        createdAt: new Date().toISOString(),
+        creator: currentTrack.artist || 'Unknown Artist',
+        duration: currentTrack.duration ? `${Math.floor(currentTrack.duration / 60)}:${(currentTrack.duration % 60).toString().padStart(2, '0')}` : undefined
+      };
+
+      setCurrentSong(song);
+      setCurrentScreen('songPlayer');
+    }
+  };
 
   // --- Loading & Error ---
   if (isLoading || authLoading) {
@@ -315,8 +341,6 @@ function App() {
             onAccountSettings={() => setCurrentScreen('accountSettings')}
             onInbox={() => setCurrentScreen('notifications')}
             userSongs={songs}
-            onPlaySong={handlePlaySong}
-            userName={userName}
           />
         );
       case 'songPlayer':
@@ -341,6 +365,9 @@ function App() {
             onNotifications={() => setCurrentScreen('notifications')}
             onAnalytics={() => setCurrentScreen('analytics')}
             refreshProfile={handleRefreshProfile}
+            onCreateMusic={() => setCurrentScreen('createMusic')}
+            onMySongs={() => setCurrentScreen('mySongs')}
+            onInbox={() => setCurrentScreen('notifications')}
           />
         );
       case 'profile':
@@ -358,7 +385,14 @@ function App() {
           />
         );
       case 'notifications':
-        return <NotificationsScreen onBack={() => setCurrentScreen('home')} />;
+        return (
+          <NotificationsScreen
+            onBack={() => setCurrentScreen('home')}
+            onCreateMusic={() => setCurrentScreen('createMusic')}
+            onMySongs={() => setCurrentScreen('mySongs')}
+            onAccountSettings={() => setCurrentScreen('accountSettings')}
+          />
+        );
       case 'userProfile':
         return (
         <UserProfileScreen
@@ -450,17 +484,23 @@ function App() {
   };
 
   return (
-    <AudioProvider>
       <div className="mobile-container">
         {currentScreen !== 'createMusic' && <StatusBar />}
         <div className="h-full overflow-hidden relative">
           {renderScreen()}
 
-          {/* Global Audio Player - replaces mini player */}
-          <GlobalAudioPlayer />
+          {/* Global Audio Player - only show when not on song player screen */}
+          {currentScreen !== 'songPlayer' && <GlobalAudioPlayer onPlayerClick={handleGlobalPlayerClick} />}
 
         </div>
       </div>
+  );
+}
+
+function App() {
+  return (
+    <AudioProvider>
+      <AppContent />
     </AudioProvider>
   );
 }

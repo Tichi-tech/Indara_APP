@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronRight, User, Bell, Shield, HelpCircle, LogOut, Crown,
 import { useMyProfile } from '../hooks/useMyProfile';
 import { useAuth } from '../hooks/useAuth';
 import { isAdminUser } from '../lib/supabase';
+import BottomNav from './BottomNav';
 
 interface AccountSettingsScreenProps {
   onBack: () => void;
@@ -14,6 +15,9 @@ interface AccountSettingsScreenProps {
   onNotifications: () => void;
   onAnalytics?: () => void;
   refreshProfile?: () => void;
+  onCreateMusic?: () => void;
+  onMySongs?: () => void;
+  onInbox?: () => void;
 }
 
 const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
@@ -25,7 +29,10 @@ const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
   onEditProfile,
   onNotifications,
   onAnalytics,
-  refreshProfile
+  refreshProfile,
+  onCreateMusic,
+  onMySongs,
+  onInbox
 }) => {
   const { user } = useAuth();
   const {
@@ -164,6 +171,18 @@ const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Bottom Navigation */}
+      <BottomNav
+        active="account"
+        onHome={onBack}
+        onLibrary={onMySongs || (() => {})}
+        onCreate={onCreateMusic || (() => {})}
+        onInbox={onInbox || onNotifications}
+        onAccount={() => {}}
+        badgeCount={1}
+        accountInitial={getUserInitials()}
+      />
     </div>
   );
 };
