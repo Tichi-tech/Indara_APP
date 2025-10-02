@@ -8,7 +8,7 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 const config = getDefaultConfig(projectRoot);
 
 // watch workspace packages
-config.watchFolders = [path.resolve(workspaceRoot, 'packages')];
+config.watchFolders = [workspaceRoot];
 
 // prefer node_modules from app and workspace root
 config.resolver.unstable_enableSymlinks = true;

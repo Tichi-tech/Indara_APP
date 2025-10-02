@@ -1,48 +1,32 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { FlatList, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
-import { useTracks } from '../../src/hooks/useTracks';
-import { usePlayer } from '../../src/hooks/usePlayer';
+import { View, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
+import { H1, PlaylistCard, TrackRow } from '@/ui';
+import { mockPlaylists, mockTracks } from '@/mock/data';
 
 export default function Home() {
-  const { tracks } = useTracks();
-  const player = usePlayer();
+  const router = useRouter();
 
   return (
-    <SafeAreaView style={styles.container}>
-      <FlatList
-        data={tracks}
-        keyExtractor={(t) => t.id}
-        ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: '#eee' }} />}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.row} onPress={() => player.loadAndPlay(item, tracks)}>
-            <View>
-              <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.artist}>{item.artist}</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-      />
-    </SafeAreaView>
+    <ScrollView className="flex-1 bg-white dark:bg-black">
+      <View className="p-4 gap-4">
+        <H1>Playlists</H1>
+        {mockPlaylists.map(item => (
+          <PlaylistCard
+            key={item.id}
+            {...item}
+            onPress={(id) => router.push(`/playlist/${id}`)}
+          />
+        ))}
+
+        <H1 className="mt-4">Tracks</H1>
+        {mockTracks.map(item => (
+          <TrackRow
+            key={item.id}
+            {...item}
+            onPress={() => router.push('/(tabs)/now-playing')}
+          />
+        ))}
+      </View>
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  row: {
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  artist: {
-    color: '#666',
-    marginTop: 4,
-  },
-});

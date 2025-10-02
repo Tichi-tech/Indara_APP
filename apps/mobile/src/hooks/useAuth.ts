@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
@@ -11,11 +12,12 @@ WebBrowser.maybeCompleteAuthSession();
 // Detect if running in Expo Go
 const isExpoGo = Constants.appOwnership === 'expo';
 
-// For Expo Go testing, use localhost which will show the code in the URL
-// For production, use native deep link
-const REDIRECT_URI = isExpoGo
-  ? 'http://localhost:8082'                                        // Localhost for testing in Expo Go
-  : makeRedirectUri({ scheme: 'indara', path: 'auth/callback' }); // -> indara://auth/callback
+// Different redirect URI based on platform
+const REDIRECT_URI = Platform.OS === 'web'
+  ? `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081'}/auth/callback`
+  : isExpoGo
+  ? 'http://localhost:8082'
+  : makeRedirectUri({ scheme: 'indara', path: 'auth/callback' });
 
 console.log('🔍 DEBUG: isExpoGo =', isExpoGo);
 console.log('🔍 DEBUG: Constants.appOwnership =', Constants.appOwnership);
@@ -26,8 +28,11 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Handle deep link for OAuth callback
+  // Handle deep link for OAuth callback (mobile only)
   useEffect(() => {
+    // Skip deep link handling on web - handled by callback route instead
+    if (Platform.OS === 'web') return;
+
     const handleDeepLink = async ({ url }: { url: string }) => {
       console.log('🔗 Deep link received:', url);
       if (url.includes('code=') || url.includes('access_token=')) {
@@ -63,6 +68,20 @@ export function useAuth() {
   const signInWithGoogle = async () => {
     console.log('🔐 Starting OAuth with redirectTo:', REDIRECT_URI);
 
+    // On web, use standard OAuth flow (no skipBrowserRedirect)
+    if (Platform.OS === 'web') {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: REDIRECT_URI,
+          queryParams: { access_type: 'offline', prompt: 'consent' },
+        },
+      });
+      if (error) throw error;
+      return; // Browser will handle the redirect
+    }
+
+    // On mobile, use skipBrowserRedirect and WebBrowser
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

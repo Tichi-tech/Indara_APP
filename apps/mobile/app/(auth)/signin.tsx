@@ -1,10 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, Button, View, StyleSheet, Alert } from 'react-native';
-import { useAuth } from '../../src/hooks/useAuth';
+import { View, Alert, Text, Pressable, StyleSheet } from 'react-native';
+import { signInWithGoogle } from '../../src/auth';
 
 export default function SignIn() {
-  const { signInWithGoogle } = useAuth();
-
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogle();
@@ -16,12 +14,12 @@ export default function SignIn() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Sign In</Text>
-        <Text style={styles.subtitle}>Welcome back to Indara</Text>
+        <Text style={styles.title}>🎵 Indara</Text>
+        <Text style={styles.subtitle}>Healing music and meditation for your soul</Text>
 
-        <View style={styles.buttonContainer}>
-          <Button title="Sign in with Google" onPress={handleGoogleSignIn} />
-        </View>
+        <Pressable style={styles.button} onPress={handleGoogleSignIn}>
+          <Text style={styles.buttonText}>Sign in with Google</Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );
@@ -30,34 +28,34 @@ export default function SignIn() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f9fafb',
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
-    padding: 20,
+    padding: 24,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
-    marginBottom: 20,
+    color: '#6b7280',
+    marginBottom: 32,
+    textAlign: 'center',
   },
-  buttonContainer: {
-    marginTop: 20,
-    width: '100%',
-    maxWidth: 300,
+  button: {
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
   },
-  note: {
-    marginTop: 20,
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
