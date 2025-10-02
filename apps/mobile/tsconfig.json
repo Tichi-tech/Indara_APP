@@ -6,12 +6,9 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": ".",
+    "jsx": "react-jsx",
     "paths": {
-      "@/*": ["./*"],
-      "@/ui": ["./src/ui/index"],
-      "@/ui/*": ["./src/ui/*"],
-      "@/mock": ["./src/mock/index"],
-      "@/mock/*": ["./src/mock/*"],
+      "@/*": ["src/*"],
       "@indara/tokens": ["../../packages/tokens/src"],
       "@indara/tokens/*": ["../../packages/tokens/src/*"],
       "@indara/shared": ["../../packages/shared/src"],
