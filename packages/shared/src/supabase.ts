@@ -1,13 +1,78 @@
 import { createClient } from '@supabase/supabase-js'
+import { resolveThumbnailUri } from './utils/thumbnailMatcher.js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mtypyrdsboxrgzsxwsk.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key'
-const isPlaceholder = supabaseAnonKey.includes('placeholder') || supabaseAnonKey === 'placeholder-anon-key'
 
-// Note: You should set these in your .env file for security
-console.log('🔗 Connecting to Supabase:', supabaseUrl)
+const SUPABASE_URL_KEYS = [
+  'EXPO_PUBLIC_SUPABASE_URL',
+  'VITE_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'SUPABASE_URL',
+];
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const SUPABASE_ANON_KEY_KEYS = [
+  'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+  'VITE_SUPABASE_ANON_KEY',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'SUPABASE_ANON_KEY',
+];
+
+const SUPABASE_REDIRECT_KEYS = [
+  'EXPO_PUBLIC_SUPABASE_REDIRECT_URL',
+  'VITE_SUPABASE_REDIRECT_URL',
+  'NEXT_PUBLIC_SUPABASE_REDIRECT_URL',
+  'SUPABASE_REDIRECT_URL',
+];
+
+type EnvRecord = Record<string, string | undefined>;
+
+const importMetaEnv: EnvRecord | undefined =
+  typeof import.meta !== 'undefined' && import.meta && typeof import.meta === 'object'
+    ? ((import.meta as any).env as EnvRecord | undefined)
+    : undefined;
+
+const processEnv: EnvRecord | undefined =
+  typeof process !== 'undefined' && process?.env
+    ? (process.env as EnvRecord)
+    : undefined;
+
+const envSources: EnvRecord[] = [processEnv, importMetaEnv].filter(Boolean) as EnvRecord[];
+
+const readEnv = (keys: string[], fallback?: string) => {
+  for (const source of envSources) {
+    for (const key of keys) {
+      const value = source[key];
+      if (typeof value === 'string' && value.length > 0) {
+        return value;
+      }
+    }
+  }
+  return fallback;
+};
+
+const supabaseUrl = readEnv(SUPABASE_URL_KEYS, 'https://mtypyrdsboxrgzsxwsk.supabase.co')!;
+const supabaseAnonKey = readEnv(SUPABASE_ANON_KEY_KEYS, 'placeholder-anon-key')!;
+const explicitRedirect = readEnv(SUPABASE_REDIRECT_KEYS);
+const isPlaceholder = supabaseAnonKey.includes('placeholder') || supabaseAnonKey === 'placeholder-anon-key';
+
+// Note: You should set these in your environment for security
+console.log('[supabase] Connecting to:', supabaseUrl);
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+const resolveRedirectUrl = () => {
+  if (typeof window !== 'undefined' && window?.location?.origin) {
+    return window.location.origin;
+  }
+  return explicitRedirect ?? null;
+};
+
+const getRedirectOrThrow = () => {
+  const redirect = resolveRedirectUrl();
+  if (!redirect) {
+    throw new Error('Supabase OAuth redirect URL is not configured. Provide SUPABASE_REDIRECT_URL for non-browser environments.');
+  }
+  return redirect;
+};
 
 // Auth helpers
 export const auth = {
@@ -63,11 +128,13 @@ export const auth = {
     console.log('🔍 STEP 2: Supabase URL:', supabaseUrl)
     console.log('🔍 STEP 3: Supabase Key:', supabaseAnonKey.substring(0, 20) + '...')
     console.log('🔍 STEP 4: Is placeholder?', isPlaceholder)
-    console.log('🔍 STEP 4.5: Current window origin:', window.location.origin)
-    console.log('🔍 STEP 4.6: Current full URL:', window.location.href)
+    console.log('[supabase] STEP 4.5: Current redirect origin:', resolveRedirectUrl())
+    if (typeof window !== 'undefined') {
+      console.log('[supabase] STEP 4.6: Current full URL:', window.location.href);
+    }
     
     if (isPlaceholder) {
-      console.warn('⚠️ Using placeholder Supabase credentials - OAuth will not work')
+      console.warn('[supabase] Placeholder Supabase credentials detected - OAuth will not work')
       return { 
         data: { 
           user: {
@@ -85,7 +152,7 @@ export const auth = {
       console.log('🚀 STEP 5: Calling supabase.auth.signInWithOAuth...')
       
       // Use the current origin for redirect
-      const redirectTo = window.location.origin
+      const redirectTo = getRedirectOrThrow()
       console.log('🔍 STEP 5.5: Redirect URL will be:', redirectTo)
       
       const oauthOptions = {
@@ -125,7 +192,7 @@ export const auth = {
 
   signInWithApple: async () => {
     if (isPlaceholder) {
-      console.warn('⚠️ Using placeholder Supabase credentials - OAuth will not work')
+      console.warn('[supabase] Placeholder Supabase credentials detected - OAuth will not work')
       return { 
         data: { 
           user: {
@@ -142,14 +209,14 @@ export const auth = {
     return await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: {
-        redirectTo: `${window.location.origin}`
+        redirectTo: getRedirectOrThrow()
       }
     })
   },
 
   signInWithFacebook: async () => {
     if (isPlaceholder) {
-      console.warn('⚠️ Using placeholder Supabase credentials - OAuth will not work')
+      console.warn('[supabase] Placeholder Supabase credentials detected - OAuth will not work')
       return { 
         data: { 
           user: {
@@ -166,14 +233,14 @@ export const auth = {
     return await supabase.auth.signInWithOAuth({
       provider: 'facebook',
       options: {
-        redirectTo: `${window.location.origin}`
+        redirectTo: getRedirectOrThrow()
       }
     })
   },
 
   signInWithDiscord: async () => {
     if (isPlaceholder) {
-      console.warn('⚠️ Using placeholder Supabase credentials - OAuth will not work')
+      console.warn('[supabase] Placeholder Supabase credentials detected - OAuth will not work')
       return { 
         data: { 
           user: {
@@ -190,7 +257,7 @@ export const auth = {
     return await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {
-        redirectTo: `${window.location.origin}`
+        redirectTo: getRedirectOrThrow()
       }
     })
   },
@@ -1340,31 +1407,31 @@ export const musicApi = {
 
         // Smart fallback image based on playlist name/title
         const getPlaylistImage = (name: string, thumbnailUrl?: string) => {
-          if (thumbnailUrl) return thumbnailUrl;
+          if (thumbnailUrl) return resolveThumbnailUri(thumbnailUrl);
 
           const title = name.toLowerCase();
           if (title.includes('anxiety') || title.includes('stress') || title.includes('calm')) {
-            return '/thumbnails/relax/relax-calm.png';
+            return resolveThumbnailUri('/thumbnails/relax/relax-calm.png');
           } else if (title.includes('sleep') || title.includes('soothing')) {
-            return '/thumbnails/sleep/sleep-soothing.png';
+            return resolveThumbnailUri('/thumbnails/sleep/sleep-soothing.png');
           } else if (title.includes('yoga')) {
-            return '/thumbnails/yoga/Yoga-relax.png';
+            return resolveThumbnailUri('/thumbnails/yoga/Yoga-relax.png');
           } else if (title.includes('baby') || title.includes('lullaby')) {
-            return '/thumbnails/babysetting/babysetting.png';
+            return resolveThumbnailUri('/thumbnails/babysetting/babysetting.png');
           } else if (title.includes('meditation') || title.includes('mindful')) {
-            return '/thumbnails/meditation/Meditation-clam.png';
+            return resolveThumbnailUri('/thumbnails/meditation/Meditation-clam.png');
           } else if (title.includes('focus') || title.includes('study') || title.includes('concentration')) {
-            return '/thumbnails/study/study-focus.png';
+            return resolveThumbnailUri('/thumbnails/study/study-focus.png');
           } else if (title.includes('nature') || title.includes('forest')) {
-            return '/thumbnails/forest/nature-healing.png';
+            return resolveThumbnailUri('/thumbnails/forest/nature-healing.png');
           } else if (title.includes('ocean') || title.includes('water')) {
-            return '/thumbnails/ocean/ocean.png';
+            return resolveThumbnailUri('/thumbnails/ocean/ocean.png');
           } else if (title.includes('rain')) {
-            return '/thumbnails/rain/ambient-rainy.png';
+            return resolveThumbnailUri('/thumbnails/rain/ambient-rainy.png');
           } else if (title.includes('piano')) {
-            return '/thumbnails/piano/piano.png';
+            return resolveThumbnailUri('/thumbnails/piano/piano.png');
           } else {
-            return '/thumbnails/ambient/ambient-sunset.png'; // Default fallback
+            return resolveThumbnailUri('/thumbnails/ambient/ambient-sunset.png');
           }
         };
 

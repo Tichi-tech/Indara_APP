@@ -5,6 +5,53 @@ export interface ThumbnailSet {
   priority: number;
 }
 
+const THUMBNAIL_BASE_URL_KEYS = [
+  'EXPO_PUBLIC_THUMBNAIL_BASE_URL',
+  'NEXT_PUBLIC_THUMBNAIL_BASE_URL',
+  'VITE_THUMBNAIL_BASE_URL',
+  'THUMBNAIL_CDN_BASE_URL',
+];
+
+type EnvRecord = Record<string, string | undefined>;
+
+const importMetaEnv: EnvRecord | undefined =
+  typeof import.meta !== 'undefined' && import.meta && typeof import.meta === 'object'
+    ? ((import.meta as any).env as EnvRecord | undefined)
+    : undefined;
+
+const processEnv: EnvRecord | undefined =
+  typeof process !== 'undefined' && process?.env
+    ? (process.env as EnvRecord)
+    : undefined;
+
+const envSources: EnvRecord[] = [processEnv, importMetaEnv].filter(Boolean) as EnvRecord[];
+
+const readEnv = (keys: string[]) => {
+  for (const source of envSources) {
+    for (const key of keys) {
+      const value = source[key];
+      if (typeof value === 'string' && value.length > 0) {
+        return value;
+      }
+    }
+  }
+  return undefined;
+};
+
+const THUMBNAIL_BASE_URL = readEnv(THUMBNAIL_BASE_URL_KEYS);
+const FALLBACK_THUMBNAIL =
+  'https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=400';
+
+export const resolveThumbnailUri = (uri: string | null | undefined) => {
+  if (!uri) return FALLBACK_THUMBNAIL;
+  if (/^https?:\/\//i.test(uri)) return uri;
+  if (!THUMBNAIL_BASE_URL) return FALLBACK_THUMBNAIL;
+
+  const base = THUMBNAIL_BASE_URL.replace(/\/$/, '');
+  const normalisedPath = uri.startsWith('/') ? uri : `/${uri}`;
+  return `${base}${normalisedPath}`;
+};
+
 export const THUMBNAIL_SETS: ThumbnailSet[] = [
   {
     genre: 'ambient',

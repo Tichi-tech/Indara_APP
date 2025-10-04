@@ -1,9 +1,35 @@
+# Node / Expo
 node_modules/
 dist/
+.expo/
+.expo-shared/
 *.log
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+
+# Build artifacts
+build/
+**/dist/
+
+# iOS / Xcode
+**/ios/build/
+**/ios/Pods/
+**/*.xcworkspace/xcuserdata/
+**/*.xcodeproj/project.xcworkspace/xcuserdata/
+**/DerivedData/
+
+# Android / Gradle
+**/android/.gradle/
+**/android/build/
+**/android/app/build/
+**/android/local.properties
+
+# Environment & credentials
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+
+# IDE / OS noise
 .vscode/
-.DS_Storenode_modules/
+.DS_Store
+
