@@ -20,6 +20,7 @@ interface Song {
   creator?: string;
   isLiked?: boolean;
   duration?: string; // in "mm:ss" optionally
+  audio_url?: string;
 }
 
 interface SongPlayerScreenProps {
@@ -72,11 +73,12 @@ const SongPlayerScreen: React.FC<SongPlayerScreenProps> = ({ onBack, song, onSha
   // Auto-play the song when component mounts if it's not already playing
   useEffect(() => {
     if (!currentTrack || currentTrack.id !== song.id) {
+      const audioUrl = song.audio_url || (song as any).audioUrl || (song as any).audio_url;
       const track = {
         id: song.id,
         title: song.title,
         artist: song.creator,
-        audio_url: (song as any).audioUrl || (song as any).audio_url || 'https://cdn.pixabay.com/download/audio/2021/11/30/audio_4f3a9e4be3.mp3?filename=relaxing-ambient-110997.mp3',
+        audio_url: audioUrl || 'https://cdn.pixabay.com/download/audio/2021/11/30/audio_4f3a9e4be3.mp3?filename=relaxing-ambient-110997.mp3',
         thumbnail_url: song.image,
         type: 'music' as const
       };

@@ -1,7 +1,22 @@
-import { View, ViewProps } from 'react-native';
+import { StyleSheet, View, ViewProps } from 'react-native';
 
-type TWViewProps = ViewProps & { className?: string };
+type Props = ViewProps & {
+  style?: ViewProps['style'];
+};
 
-export function Card({ className = '', ...p }: TWViewProps) {
-  return <View {...p} className={`bg-white dark:bg-neutral-900 rounded-2xl p-4 shadow ${className}`} />;
+export function Card({ style, ...props }: Props) {
+  return <View {...props} style={[styles.card, style]} />;
 }
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 16,
+    shadowColor: '#000000',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+  },
+});

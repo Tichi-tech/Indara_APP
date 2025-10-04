@@ -36,7 +36,7 @@ export default function Player() {
         <Text>{fmt(p.duration)}</Text>
       </View>
 
-      <View style={[styles.row, { gap: 12 }]}>
+      <View style={styles.controlsRow}>
         <Button title="Prev" onPress={p.prev} />
         <Button title={p.isPlaying ? 'Pause' : 'Play'} onPress={p.toggle} />
         <Button title="Next" onPress={p.next} />
@@ -49,7 +49,6 @@ const styles = StyleSheet.create({
   wrap: {
     flex: 1,
     padding: 20,
-    gap: 16,
   },
   now: {
     textAlign: 'center',
@@ -68,5 +67,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
   },
 });

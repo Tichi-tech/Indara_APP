@@ -14,6 +14,8 @@ type PlayerCtx = {
   seekSec: (sec: number) => Promise<void>;
   next: () => Promise<void>;
   prev: () => Promise<void>;
+  isMiniPlayerVisible: boolean;
+  setMiniPlayerVisible: (visible: boolean) => void;
 };
 
 const Ctx = createContext<PlayerCtx | null>(null);
@@ -31,6 +33,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const idxRef = useRef(0);
+  const [isMiniPlayerVisible, setMiniPlayerVisible] = useState(true);
 
   useEffect(() => {
     audioService.init();
@@ -106,8 +109,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       seekSec,
       next,
       prev,
+      isMiniPlayerVisible,
+      setMiniPlayerVisible,
     }),
-    [current, queue, isPlaying, position, duration]
+    [current, queue, isPlaying, position, duration, isMiniPlayerVisible]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

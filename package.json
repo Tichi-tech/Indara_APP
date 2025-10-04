@@ -1,7 +1,10 @@
 {
   "name": "indara-ai",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:mobile": "npm run start --workspace=apps/mobile",
@@ -19,5 +22,9 @@
   },
   "devDependencies": {
     "typescript": "^5.0.2"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "react-native-url-polyfill": "^3.0.0"
   }
 }

@@ -1,4 +1,4 @@
-import { Pressable, View, Image } from 'react-native';
+import { Pressable, View, Image, StyleSheet } from 'react-native';
 import { H3, Caption } from '../atoms/Text';
 
 type PlaylistCardProps = {
@@ -7,30 +7,54 @@ type PlaylistCardProps = {
   subtitle?: string;
   coverUri?: string;
   onPress?: (id: string) => void;
-  className?: string;
+  style?: any;
 };
 
-export function PlaylistCard({
-  id, title, subtitle, coverUri, onPress, className = '',
-}: PlaylistCardProps) {
+export function PlaylistCard({ id, title, subtitle, coverUri, onPress, style }: PlaylistCardProps) {
   return (
     <Pressable
       onPress={() => onPress?.(id)}
       accessibilityRole="button"
       hitSlop={8}
-      className={`bg-white dark:bg-neutral-900 rounded-2xl p-3 shadow ${className}`}
+      style={[styles.card, style]}
     >
       {coverUri ? (
-        <Image
-          source={{ uri: coverUri }}
-          className="w-full aspect-square rounded-xl bg-slate-200 dark:bg-neutral-800"
-        />
+        <Image source={{ uri: coverUri }} style={styles.image} />
       ) : null}
 
-      <View className="mt-2">
-        <H3>{title}</H3>
-        {subtitle ? <Caption className="mt-0.5">{subtitle}</Caption> : null}
+      <View style={styles.copyWrap}>
+        <H3 style={styles.title}>{title}</H3>
+        {subtitle ? <Caption style={styles.subtitle}>{subtitle}</Caption> : null}
       </View>
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  image: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 18,
+    backgroundColor: '#e5e7eb',
+  },
+  copyWrap: {
+    marginTop: 12,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  subtitle: {
+    color: '#6b7280',
+    marginTop: 4,
+  },
+});

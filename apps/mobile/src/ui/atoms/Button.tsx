@@ -1,30 +1,65 @@
-import { Pressable, Text, PressableProps } from 'react-native';
+import { Pressable, Text, StyleSheet, StyleProp, ViewStyle, PressableProps } from 'react-native';
 
-type Props = PressableProps & {
+type Props = Omit<PressableProps, 'style'> & {
   title: string;
   variant?: 'primary' | 'secondary' | 'ghost';
-  className?: string;
+  style?: StyleProp<ViewStyle>;
 };
 
-export function Button({ title, variant = 'primary', className = '', ...p }: Props) {
-  const base = 'px-4 py-3 rounded-2xl items-center justify-center';
-  const styles =
+export function Button({ title, variant = 'primary', style, ...props }: Props) {
+  const buttonStyle =
     variant === 'primary'
-      ? 'bg-black dark:bg-white'
+      ? styles.primary
       : variant === 'secondary'
-      ? 'bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700'
-      : 'bg-transparent';
+      ? styles.secondary
+      : styles.ghost;
 
-  const textStyles =
+  const textStyle =
     variant === 'primary'
-      ? 'text-white dark:text-black'
+      ? styles.primaryText
       : variant === 'secondary'
-      ? 'text-black dark:text-white'
-      : 'text-black dark:text-white';
+      ? styles.secondaryText
+      : styles.ghostText;
+
+  const combinedStyle: StyleProp<ViewStyle> = [styles.base, buttonStyle, style];
 
   return (
-    <Pressable {...p} className={`${base} ${styles} ${className}`}>
-      <Text className={`text-base font-semibold text-center ${textStyles}`}>{title}</Text>
+    <Pressable {...props} style={combinedStyle}>
+      <Text style={[styles.buttonText, textStyle]}>{title}</Text>
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  base: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primary: {
+    backgroundColor: '#111827',
+  },
+  secondary: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  ghost: {
+    backgroundColor: 'transparent',
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  primaryText: {
+    color: '#ffffff',
+  },
+  secondaryText: {
+    color: '#111827',
+  },
+  ghostText: {
+    color: '#111827',
+  },
+});

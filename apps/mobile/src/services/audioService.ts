@@ -21,15 +21,19 @@ class AudioService {
   async init() {
     await setAudioModeAsync({
       playsInSilentMode: true,
-      staysActiveInBackground: false,
       interruptionMode: 'mixWithOthers',
-      shouldDuckAndroid: true,
+      interruptionModeAndroid: 'duckOthers',
+      allowsRecording: false,
+      shouldPlayInBackground: false,
+      shouldRouteThroughEarpiece: false,
     }).catch((err) => console.warn('🎵 Audio mode init failed:', err));
   }
 
   subscribe(fn: Listener) {
     this.listeners.add(fn);
-    return () => this.listeners.delete(fn);
+    return () => {
+      this.listeners.delete(fn);
+    };
   }
 
   private notifyListeners() {
@@ -62,8 +66,8 @@ class AudioService {
     await this.unload();
 
     try {
-      const { AudioPlayer: PlayerClass } = await import('expo-audio');
-      this.player = new PlayerClass({ uri: url });
+      const { createAudioPlayer } = await import('expo-audio');
+      this.player = createAudioPlayer({ uri: url }, { updateInterval: 500 });
       this.currentUrl = url;
 
       this.startStatusPolling();

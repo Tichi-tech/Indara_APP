@@ -1,29 +1,25 @@
-// apps/mobile/app/playlist/[id].tsx
-import { useLocalSearchParams } from 'expo-router';
-import { ScrollView, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { H1, Card, TrackRow } from '@/ui';
-import { mockTracks } from '@/mock';
+import { PlaylistScreen } from '@/screens/PlaylistScreen';
 
-export default function PlaylistDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+export default function PlaylistRoute() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ id: string; name?: string; description?: string }>();
+
+  const playlistId = params.id;
+  const title = params.name ? decodeURIComponent(params.name) : 'Playlist';
+  const description = params.description ? decodeURIComponent(params.description) : undefined;
 
   return (
-    <ScrollView className="flex-1 bg-white dark:bg-black">
-      <View className="p-4 gap-4">
-        <H1>Playlist {id}</H1>
-
-        <Card className="mt-2">
-          {mockTracks.map((item, idx) => (
-            <View key={item.id} className="px-1">
-              <TrackRow {...item} onPress={() => {}} />
-              {idx < mockTracks.length - 1 && (
-                <View className="h-px bg-slate-200 dark:bg-neutral-800 mx-1" />
-              )}
-            </View>
-          ))}
-        </Card>
-      </View>
-    </ScrollView>
+    <PlaylistScreen
+      playlistId={playlistId}
+      playlistName={title}
+      playlistDescription={description}
+      onBack={() => router.back()}
+      onCreate={() => router.push('/create')}
+      onLibrary={() => router.push('/(tabs)/library')}
+      onInbox={() => router.push('/(tabs)/inbox')}
+      onAccount={() => router.push('/(tabs)/profile')}
+    />
   );
 }

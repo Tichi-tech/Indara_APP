@@ -24,7 +24,6 @@ const expoProjectPath = expoOwner && expoSlug ? `@${expoOwner}/${expoSlug}` : un
 
 const expoReturnRedirect = AuthSession.makeRedirectUri({
   path: redirectPath,
-  useProxy: false,
   preferLocalhost: false,
 });
 
@@ -32,7 +31,6 @@ const expoProxyRedirect = expoProjectPath
   ? `https://auth.expo.dev/${expoProjectPath}?redirect_uri=${encodeURIComponent(expoReturnRedirect)}`
   : AuthSession.makeRedirectUri({
       path: redirectPath,
-      useProxy: true,
     });
 
 const nativeRedirect = AuthSession.makeRedirectUri({
@@ -68,17 +66,34 @@ export function startAuthLinkListener() {
 
   deepLinkSub = Linking.addEventListener('url', async ({ url }) => {
     console.log('[Auth] deep link url:', url);
-    if (!url.includes('code=') || !url.includes('state=')) return;
-    if (exchangedThisRound) return;
+    if (!url.includes('code=')) return;
+    if (exchangedThisRound) {
+      console.log('[Auth] Already exchanged this round, skipping');
+      return;
+    }
 
     try {
       exchangedThisRound = true;
       console.log('[Auth] Exchanging code for session (link)...');
-      const { data, error } = await supabase.auth.exchangeCodeForSession(url);
-      if (error) throw error;
+      console.log('[Auth] Full callback URL:', url);
+      const code = new URL(url).searchParams.get('code');
+      if (!code) {
+        console.error('[Auth] No code parameter found in callback URL.');
+        throw new Error('Missing authorization code');
+      }
+      const authCode = `${code}`;
+      console.log('[Auth] exchangeCodeForSession payload (link listener):', authCode, typeof authCode);
+      const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
+      if (error) {
+        console.error('[Auth] Deep link exchange error:', error);
+        console.error('[Auth] URL that failed:', url);
+        throw error;
+      }
       console.log('[Auth] Session via link:', data.session?.user?.email);
+      console.log('[Auth] ✅ Successfully authenticated via deep link');
     } catch (e) {
       console.warn('[Auth] Exchange (link) failed', e);
+      exchangedThisRound = false; // Reset so manual exchange can try
     }
   });
 }
@@ -111,21 +126,20 @@ export async function signInWithGoogle() {
 
     console.log('[Auth] authUrl =', data.url);
 
-    // Open with WebBrowser/AuthSession so the proxy can return to the app
+    // Open with WebBrowser so the proxy can return to the app
     await WebBrowser.warmUpAsync();
     const result = await WebBrowser.openAuthSessionAsync(data.url, authSessionReturnUrl);
     await WebBrowser.coolDownAsync();
     console.log('[Auth] Browser result:', result.type);
 
-    // On iOS we often get the final callback URL directly here
-    if (result.type === 'success' && result.url && !exchangedThisRound) {
-      console.log('[Auth] Exchanging code for session (direct)...');
-      await supabase.auth.exchangeCodeForSession(result.url);
-      exchangedThisRound = true;
-      console.log('[Auth] Session via direct exchange');
+    // Just wait for the deep link to handle the session exchange
+    if (result.type === 'success') {
+      console.log('[Auth] Browser returned success, waiting for deep link...');
+      // Give some time for the deep link to be processed
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('[Auth] OAuth flow finished.');
     }
 
-    console.log('[Auth] OAuth flow finished.');
   } catch (err) {
     console.error('[Auth] Sign-in error:', err);
     throw err;

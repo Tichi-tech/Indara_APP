@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 
+import type { AudioSource } from 'expo-audio';
+
 type Source = number | string; // require('...mp3') -> number, or remote URL string
 
 export type UseIndaraAudioOptions = {
@@ -28,20 +30,27 @@ export function useIndaraAudio(source: Source | null, opts: UseIndaraAudioOption
   const lastEndCallbackRef = useRef<number>(0);
 
   // Initialize audio player
-  const player = useAudioPlayer(
-    source ? (typeof source === 'number' ? source : { uri: source }) : { uri: '' },
-    (p) => {
-      if (p) p.loop = loop;
-    }
-  );
+  const audioSource = useMemo<AudioSource | undefined>(() => {
+    if (!source) return undefined;
+    return typeof source === 'number' ? source : { uri: source };
+  }, [source]);
+
+  const player = useAudioPlayer(audioSource, { updateInterval: 250 });
+
+  useEffect(() => {
+    if (!player) return;
+    player.loop = loop;
+  }, [player, loop]);
 
   // Set global audio mode for Indara (plays in silent mode, mixes with others)
   useEffect(() => {
     setAudioModeAsync({
       playsInSilentMode: playsInSilentModeIOS,
-      staysActiveInBackground: false,
       interruptionMode: 'mixWithOthers',
-      shouldDuckAndroid: true,
+      interruptionModeAndroid: 'duckOthers',
+      allowsRecording: false,
+      shouldPlayInBackground: false,
+      shouldRouteThroughEarpiece: false,
     }).catch((err) => console.warn('🎵 Audio mode setup failed:', err));
   }, [playsInSilentModeIOS]);
 

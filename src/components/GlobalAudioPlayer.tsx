@@ -32,15 +32,36 @@ export const GlobalAudioPlayer: React.FC<GlobalAudioPlayerProps> = ({ onPlayerCl
     }
   };
 
+  const isInteractive = typeof onPlayerClick === 'function';
+
+  const handleBarClick = () => {
+    if (!onPlayerClick) {
+      return;
+    }
+    onPlayerClick();
+  };
+
+  const stopPropagation = (event: React.MouseEvent) => {
+    event.stopPropagation();
+  };
+
   return (
     <div className="fixed bottom-[4.5rem] left-1/2 -translate-x-1/2 w-full max-w-[375px] z-[60] bg-white/70 backdrop-blur-sm border-t border-gray-200/50 shadow-lg">
-      <div className="w-full px-4 py-2 safe-area-padding-bottom">
+      <div
+        className={`w-full px-4 py-2 safe-area-padding-bottom${isInteractive ? ' cursor-pointer' : ''}`}
+        role={isInteractive ? 'button' : undefined}
+        tabIndex={isInteractive ? 0 : -1}
+        onClick={isInteractive ? handleBarClick : undefined}
+        onKeyDown={isInteractive ? (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            handleBarClick();
+          }
+        } : undefined}
+      >
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Track Info - Takes most space */}
-            <div
-              className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
-              onClick={onPlayerClick}
-            >
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex-shrink-0 overflow-hidden">
                 {currentTrack.thumbnail_url ? (
                   <img
@@ -76,7 +97,10 @@ export const GlobalAudioPlayer: React.FC<GlobalAudioPlayerProps> = ({ onPlayerCl
               {/* Previous Track (only show if queue has multiple tracks) */}
               {queue.length > 1 && (
                 <button
-                  onClick={playPrevious}
+                  onClick={(event) => {
+                    stopPropagation(event);
+                    playPrevious();
+                  }}
                   disabled={currentIndex <= 0}
                   className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-gray-600 hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Previous"
@@ -87,7 +111,10 @@ export const GlobalAudioPlayer: React.FC<GlobalAudioPlayerProps> = ({ onPlayerCl
 
               {/* Play/Pause */}
               <button
-                onClick={handlePlayPause}
+                onClick={(event) => {
+                  stopPropagation(event);
+                  handlePlayPause();
+                }}
                 disabled={isLoading}
                 className="w-8 h-8 sm:w-10 sm:h-10 bg-black text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105 disabled:opacity-50"
                 title={isPlaying ? 'Pause' : 'Play'}
@@ -103,7 +130,10 @@ export const GlobalAudioPlayer: React.FC<GlobalAudioPlayerProps> = ({ onPlayerCl
 
               {/* Next Track (always visible) */}
               <button
-                onClick={playNext}
+                onClick={(event) => {
+                  stopPropagation(event);
+                  playNext();
+                }}
                 disabled={queue.length <= 1 || currentIndex >= queue.length - 1}
                 className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-gray-600 hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Next track"

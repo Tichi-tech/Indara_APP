@@ -15,8 +15,8 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 }}>
-      <Text style={{ fontSize: 22, fontWeight: '600' }}>🎵 Indara Mobile</Text>
+    <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text style={{ fontSize: 22, fontWeight: '600', marginBottom: 12 }}>🎵 Indara Mobile</Text>
       <Button title="Test Supabase" onPress={testSupabase} />
     </SafeAreaView>
   );

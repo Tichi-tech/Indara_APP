@@ -66,6 +66,7 @@ export interface Song {
   creator?: string;
   isLiked?: boolean;
   duration?: string;
+  audio_url?: string;
 }
 
 const AUTH_SCREENS = new Set<Screen>([
@@ -181,7 +182,8 @@ function AppContent() {
         isPublic: true,
         createdAt: new Date().toISOString(),
         creator: currentTrack.artist || 'Unknown Artist',
-        duration: currentTrack.duration ? `${Math.floor(currentTrack.duration / 60)}:${(currentTrack.duration % 60).toString().padStart(2, '0')}` : undefined
+        duration: currentTrack.duration ? `${Math.floor(currentTrack.duration / 60)}:${(currentTrack.duration % 60).toString().padStart(2, '0')}` : undefined,
+        audio_url: currentTrack.audio_url
       };
 
       setCurrentSong(song);
@@ -489,8 +491,10 @@ function AppContent() {
         <div className="h-full overflow-hidden relative">
           {renderScreen()}
 
-          {/* Global Audio Player - only show when not on song player screen */}
-          {currentScreen !== 'songPlayer' && <GlobalAudioPlayer onPlayerClick={handleGlobalPlayerClick} />}
+          {/* Global Audio Player - hide on full player screen */}
+          {currentScreen !== 'songPlayer' && (
+            <GlobalAudioPlayer onPlayerClick={handleGlobalPlayerClick} />
+          )}
 
         </div>
       </div>

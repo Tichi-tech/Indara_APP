@@ -1,23 +1,48 @@
-import { Text, TextProps } from 'react-native';
+import { Text, TextProps, StyleSheet } from 'react-native';
 
-type TWTextProps = TextProps & { className?: string };
-
-export const H1 = ({ className = '', ...p }: TWTextProps) => (
-  <Text {...p} className={`text-2xl font-bold text-slate-900 dark:text-slate-100 ${className}`} />
+export const H1 = ({ style, ...props }: TextProps) => (
+  <Text {...props} style={[styles.h1, style]} />
 );
 
-export const H2 = ({ className = '', ...p }: TWTextProps) => (
-  <Text {...p} className={`text-xl font-semibold text-slate-900 dark:text-slate-100 ${className}`} />
+export const H2 = ({ style, ...props }: TextProps) => (
+  <Text {...props} style={[styles.h2, style]} />
 );
 
-export const H3 = ({ className = '', ...p }: TWTextProps) => (
-  <Text {...p} className={`text-lg font-semibold text-slate-900 dark:text-slate-100 ${className}`} />
+export const H3 = ({ style, ...props }: TextProps) => (
+  <Text {...props} style={[styles.h3, style]} />
 );
 
-export const P = ({ className = '', ...p }: TWTextProps) => (
-  <Text {...p} className={`text-base text-slate-700 dark:text-slate-300 ${className}`} />
+export const P = ({ style, ...props }: TextProps) => (
+  <Text {...props} style={[styles.p, style]} />
 );
 
-export const Caption = ({ className = '', ...p }: TWTextProps) => (
-  <Text {...p} className={`text-xs text-slate-500 dark:text-slate-400 ${className}`} />
+export const Caption = ({ style, ...props }: TextProps) => (
+  <Text {...props} style={[styles.caption, style]} />
 );
+
+const styles = StyleSheet.create({
+  h1: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  h2: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  h3: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  p: {
+    fontSize: 16,
+    lineHeight: 22,
+    color: '#374151',
+  },
+  caption: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+});

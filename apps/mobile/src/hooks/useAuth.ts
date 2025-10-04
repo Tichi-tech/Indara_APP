@@ -35,9 +35,16 @@ export function useAuth() {
 
     const handleDeepLink = async ({ url }: { url: string }) => {
       console.log('🔗 Deep link received:', url);
-      if (url.includes('code=') || url.includes('access_token=')) {
+      if (url.includes('code=')) {
         console.log('🔄 Exchanging code from deep link...');
-        const { error } = await supabase.auth.exchangeCodeForSession(url);
+        const code = new URL(url).searchParams.get('code');
+        if (!code) {
+          console.warn('❌ No code parameter found in deep link callback');
+          return;
+        }
+        const authCode = `${code}`;
+        console.log('🔐 exchangeCodeForSession payload (deep link):', authCode, typeof authCode);
+        const { error } = await supabase.auth.exchangeCodeForSession(authCode);
         if (error) console.warn('❌ exchangeCodeForSession error:', error.message);
         else console.log('✅ Auth successful via deep link');
       }
@@ -100,14 +107,21 @@ export function useAuth() {
       if (res.type === 'success' && res.url) {
         console.log('✅ Success! URL:', res.url);
         console.log('🔄 Exchanging code for session...');
-        const { error: exErr } = await supabase.auth.exchangeCodeForSession(res.url);
+        const code = new URL(res.url).searchParams.get('code');
+        if (!code) {
+          console.error('❌ No code parameter found in OAuth callback URL');
+          throw new Error('No authorization code returned from provider');
+        }
+        const authCode = `${code}`;
+        console.log('🔐 exchangeCodeForSession payload (WebBrowser result):', authCode, typeof authCode);
+        const { error: exErr } = await supabase.auth.exchangeCodeForSession(authCode);
         if (exErr) {
           console.error('❌ Exchange error:', exErr);
           throw exErr;
         }
         console.log('✅ Auth successful!');
       } else {
-        console.log('❌ Auth failed:', res.type, res.error);
+        console.log('❌ Auth ended without success:', res.type);
       }
     }
   };
@@ -117,5 +131,13 @@ export function useAuth() {
     console.log('👋 Signed out');
   };
 
-  return { session, user, loading, signInWithGoogle, signOut };
+  const signInWithPhone = async (phone: string) => {
+    return supabase.auth.signInWithOtp({ phone, options: { shouldCreateUser: true } });
+  };
+
+  const verifyOtp = async (phone: string, token: string) => {
+    return supabase.auth.verifyOtp({ type: 'sms', phone, token });
+  };
+
+  return { session, user, loading, signInWithGoogle, signOut, signInWithPhone, verifyOtp };
 }
