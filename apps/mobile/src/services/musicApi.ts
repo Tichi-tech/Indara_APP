@@ -1,16 +1,10 @@
 import { supabase } from '@/lib/supabase';
-import { getSmartThumbnail } from '@/utils/thumbnailMatcher';
+import { getSmartThumbnail, getPlaylistImage, resolveImageUrl } from '@/utils/thumbnailMatcher';
 
 type TrackStats = {
   plays: number;
   likes: number;
   isLiked?: boolean;
-};
-
-const resolveImage = (uri?: string | null) => {
-  if (!uri) return undefined;
-  if (uri.startsWith('http')) return uri;
-  return `https://app.indara.live${uri}`;
 };
 
 export const musicApi = {
@@ -89,18 +83,6 @@ export const musicApi = {
       const remainingSeconds = totalDuration % 60;
       const formattedDuration = `${totalMinutes}:${String(remainingSeconds).padStart(2, '0')}`;
 
-      const getPlaylistImage = (name: string, thumbnailUrl?: string) => {
-        if (thumbnailUrl) return resolveImage(thumbnailUrl);
-
-        const lower = name.toLowerCase();
-        if (lower.includes('sleep')) return resolveImage('/thumbnails/sleep/sleep-soothing.png');
-        if (lower.includes('meditation')) return resolveImage('/thumbnails/meditation/Meditation-clam.png');
-        if (lower.includes('anxiety') || lower.includes('calm')) return resolveImage('/thumbnails/relax/relax-calm.png');
-        if (lower.includes('focus')) return resolveImage('/thumbnails/study/study-focus.png');
-        if (lower.includes('nature') || lower.includes('forest')) return resolveImage('/thumbnails/forest/nature-healing.png');
-        return resolveImage('/thumbnails/ambient/ambient-sunset.png');
-      };
-
       return {
         id: playlist.id,
         title: playlist.name || playlist.title,
@@ -175,7 +157,7 @@ export const musicApi = {
       title: track.title || 'Untitled',
       created_at: track.created_at,
       thumbnail_url:
-        resolveImage(track.thumbnail_url) ??
+        resolveImageUrl(track.thumbnail_url) ??
         getSmartThumbnail(
           track.title || '',
           track.prompt || track.admin_notes || '',
@@ -218,6 +200,62 @@ export const musicApi = {
         console.warn('Failed to fetch track stats', e);
       }
       return { data: { plays: 0, likes: 0, isLiked: false }, error: null } as const;
+    }
+  },
+
+  /**
+   * Batch fetch track stats for multiple tracks in a single query
+   * This solves the N+1 query problem
+   */
+  async getBatchTrackStats(trackIds: string[], _userId?: string | null) {
+    if (!trackIds.length) return { data: {}, error: null } as const;
+
+    try {
+      const { data, error } = await supabase
+        .from('track_stats_view')
+        .select('track_id, play_count, like_count')
+        .in('track_id', trackIds);
+
+      if (error) {
+        if ((error as any)?.code !== '42P01') {
+          console.warn('Failed to fetch batch track stats', error);
+        }
+        // Return zero stats for all tracks on error
+        const fallbackMap = trackIds.reduce((acc, id) => {
+          acc[id] = { plays: 0, likes: 0, isLiked: false };
+          return acc;
+        }, {} as Record<string, { plays: number; likes: number; isLiked: boolean }>);
+        return { data: fallbackMap, error } as const;
+      }
+
+      // Transform array into a map for easy lookup
+      const statsMap = (data || []).reduce((acc, stat) => {
+        acc[stat.track_id] = {
+          plays: stat.play_count ?? 0,
+          likes: stat.like_count ?? 0,
+          isLiked: false,
+        };
+        return acc;
+      }, {} as Record<string, { plays: number; likes: number; isLiked: boolean }>);
+
+      // Fill in missing tracks with zero stats
+      trackIds.forEach((id) => {
+        if (!statsMap[id]) {
+          statsMap[id] = { plays: 0, likes: 0, isLiked: false };
+        }
+      });
+
+      return { data: statsMap, error: null } as const;
+    } catch (e: any) {
+      if (e?.code !== '42P01') {
+        console.warn('Failed to fetch batch track stats', e);
+      }
+      // Return empty stats for all tracks on error
+      const fallbackMap = trackIds.reduce((acc, id) => {
+        acc[id] = { plays: 0, likes: 0, isLiked: false };
+        return acc;
+      }, {} as Record<string, { plays: number; likes: number; isLiked: boolean }>);
+      return { data: fallbackMap, error: null } as const;
     }
   },
 
@@ -449,7 +487,7 @@ export const musicApi = {
         name: item.name ?? 'Untitled',
         trackCount: item.track_count ?? 0,
         image:
-          resolveImage(item.thumbnail_url) ??
+          resolveImageUrl(item.thumbnail_url) ??
           getSmartThumbnail(item.name ?? 'Playlist', '', ''),
       }));
 
@@ -480,7 +518,7 @@ export const musicApi = {
           style: track.style ?? '',
           duration: track.duration ?? '3:45',
           audio_url: track.audio_url ?? undefined,
-          thumbnail_url: resolveImage(track.thumbnail_url),
+          thumbnail_url: resolveImageUrl(track.thumbnail_url),
           created_at: track.created_at,
           admin_rating: track.admin_rating ?? null,
         };

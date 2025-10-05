@@ -29,10 +29,15 @@ function CustomTabBar({ state, navigation }: any) {
 
   const currentRoute = state.routes[state.index]?.name as RouteName | undefined;
 
+  // Hide navigation bar on now-playing (song player) screen
+  if (currentRoute === 'now-playing') {
+    return null;
+  }
+
   const active: NavKey =
     currentRoute === 'index'
       ? 'home'
-      : currentRoute === 'library' || currentRoute === 'now-playing'
+      : currentRoute === 'library'
       ? 'library'
       : currentRoute === 'inbox'
       ? 'inbox'

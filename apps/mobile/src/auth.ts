@@ -1,11 +1,9 @@
-// apps/mobile/src/auth.ts
 import * as Linking from 'expo-linking';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
 
-// iOS needs this so the Safari view can hand control back to your app
 WebBrowser.maybeCompleteAuthSession();
 
 const redirectPath = 'auth/callback';
@@ -29,14 +27,14 @@ const expoReturnRedirect = AuthSession.makeRedirectUri({
 
 const expoProxyRedirect = expoProjectPath
   ? `https://auth.expo.dev/${expoProjectPath}?redirect_uri=${encodeURIComponent(expoReturnRedirect)}`
-  : AuthSession.makeRedirectUri({
-      path: redirectPath,
-    });
+  : AuthSession.makeRedirectUri({ path: redirectPath });
 
 const nativeRedirect = AuthSession.makeRedirectUri({
   scheme: 'indara',
   path: redirectPath,
 });
+
+const hasAuthParams = (value: string) => value.includes('code=') || value.includes('access_token=');
 
 export const redirectTo =
   process.env.EXPO_PUBLIC_AUTH_REDIRECT ?? (shouldUseProxy ? expoProxyRedirect : nativeRedirect);
@@ -56,8 +54,40 @@ console.log('[Auth] config', {
 });
 
 let deepLinkSub: { remove(): void } | undefined;
-let inFlight = false;
-let exchangedThisRound = false;
+let isProcessing = false;
+let lastHandledUrl: string | null = null;
+
+const processAuthRedirect = async (url: string) => {
+    if (!url || !hasAuthParams(url)) {
+      console.log('[Auth] Redirect missing auth params, ignoring');
+      return;
+    }
+    if (lastHandledUrl === url) {
+      console.log('[Auth] Redirect already processed, skipping');
+      return;
+    }
+    if (isProcessing) {
+      console.log('[Auth] Redirect exchange already in progress, skipping');
+      return;
+    }
+
+    try {
+      isProcessing = true;
+      lastHandledUrl = url;
+      console.log('[Auth] Exchanging code for session with URL:', url);
+      const { data, error } = await supabase.auth.exchangeCodeForSession(url);
+      if (error) {
+        lastHandledUrl = null;
+        console.error('[Auth] exchangeCodeForSession error:', error);
+        throw error;
+      }
+      console.log('[Auth] Session established for:', data.session?.user?.email);
+    } catch (error) {
+      throw error;
+    } finally {
+      isProcessing = false;
+    }
+};
 
 /** Start once at app boot */
 export function startAuthLinkListener() {
@@ -66,34 +96,10 @@ export function startAuthLinkListener() {
 
   deepLinkSub = Linking.addEventListener('url', async ({ url }) => {
     console.log('[Auth] deep link url:', url);
-    if (!url.includes('code=')) return;
-    if (exchangedThisRound) {
-      console.log('[Auth] Already exchanged this round, skipping');
-      return;
-    }
-
     try {
-      exchangedThisRound = true;
-      console.log('[Auth] Exchanging code for session (link)...');
-      console.log('[Auth] Full callback URL:', url);
-      const code = new URL(url).searchParams.get('code');
-      if (!code) {
-        console.error('[Auth] No code parameter found in callback URL.');
-        throw new Error('Missing authorization code');
-      }
-      const authCode = `${code}`;
-      console.log('[Auth] exchangeCodeForSession payload (link listener):', authCode, typeof authCode);
-      const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
-      if (error) {
-        console.error('[Auth] Deep link exchange error:', error);
-        console.error('[Auth] URL that failed:', url);
-        throw error;
-      }
-      console.log('[Auth] Session via link:', data.session?.user?.email);
-      console.log('[Auth] ✅ Successfully authenticated via deep link');
-    } catch (e) {
-      console.warn('[Auth] Exchange (link) failed', e);
-      exchangedThisRound = false; // Reset so manual exchange can try
+      await processAuthRedirect(url);
+    } catch (error) {
+      console.warn('[Auth] Exchange (link) failed', error);
     }
   });
 }
@@ -106,17 +112,15 @@ export function stopAuthLinkListener() {
 
 /** Google OAuth (Expo Go safe). Call on button press. */
 export async function signInWithGoogle() {
-  if (inFlight) {
+  if (isProcessing) {
     console.log('[Auth] Sign-in already in progress; skipping.');
     return;
   }
-  inFlight = true;
-  exchangedThisRound = false;
+  lastHandledUrl = null;
 
   try {
     console.log('[Auth] redirectTo =', redirectTo);
 
-    // Ask Supabase for the provider URL, but do not auto-open a browser
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo, skipBrowserRedirect: true },
@@ -126,25 +130,25 @@ export async function signInWithGoogle() {
 
     console.log('[Auth] authUrl =', data.url);
 
-    // Open with WebBrowser so the proxy can return to the app
     await WebBrowser.warmUpAsync();
     const result = await WebBrowser.openAuthSessionAsync(data.url, authSessionReturnUrl);
     await WebBrowser.coolDownAsync();
     console.log('[Auth] Browser result:', result.type);
 
-    // Just wait for the deep link to handle the session exchange
-    if (result.type === 'success') {
-      console.log('[Auth] Browser returned success, waiting for deep link...');
-      // Give some time for the deep link to be processed
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('[Auth] OAuth flow finished.');
+    if (result.type === 'success' && result.url) {
+      try {
+        await processAuthRedirect(result.url);
+      } catch (error) {
+        console.error('[Auth] Sign-in exchange error:', error);
+        throw error;
+      }
+    } else if (result.type !== 'dismiss') {
+      console.log('[Auth] OAuth ended without success:', result.type);
     }
 
   } catch (err) {
     console.error('[Auth] Sign-in error:', err);
     throw err;
-  } finally {
-    inFlight = false;
   }
 }
 

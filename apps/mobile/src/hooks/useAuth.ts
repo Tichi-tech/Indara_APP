@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
@@ -19,40 +19,71 @@ const REDIRECT_URI = Platform.OS === 'web'
   ? 'http://localhost:8082'
   : makeRedirectUri({ scheme: 'indara', path: 'auth/callback' });
 
-console.log('🔍 DEBUG: isExpoGo =', isExpoGo);
-console.log('🔍 DEBUG: Constants.appOwnership =', Constants.appOwnership);
-console.log('🔍 DEBUG: REDIRECT_URI =', REDIRECT_URI);
+const hasAuthParams = (value: string) => value.includes('code=') || value.includes('access_token=');
+
+console.log('dY"? DEBUG: isExpoGo =', isExpoGo);
+console.log('dY"? DEBUG: Constants.appOwnership =', Constants.appOwnership);
+console.log('dY"? DEBUG: REDIRECT_URI =', REDIRECT_URI);
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastHandledUrlRef = useRef<string | null>(null);
+
+  const processAuthRedirect = async (url: string) => {
+    if (!url || !hasAuthParams(url)) {
+      console.log('dY"- Auth redirect missing code, ignoring');
+      return;
+    }
+    if (lastHandledUrlRef.current === url) {
+      console.log('dY"- Auth redirect already processed, skipping');
+      return;
+    }
+
+    try {
+      lastHandledUrlRef.current = url;
+
+      // Extract the authorization code from the URL
+      const code = new URL(url).searchParams.get('code');
+      if (!code) {
+        console.warn('??O No authorization code found in URL');
+        lastHandledUrlRef.current = null;
+        throw new Error('No authorization code');
+      }
+
+      // Exchange the code for a session (must pass string, not URL object)
+      const authCode = `${code}`;
+      console.log('🔐 Exchanging code for session:', typeof authCode);
+      const { error } = await supabase.auth.exchangeCodeForSession(authCode);
+      if (error) {
+        lastHandledUrlRef.current = null;
+        console.warn('??O exchangeCodeForSession error:', error.message);
+        throw error;
+      }
+      console.log('?o. Auth successful!');
+    } catch (err) {
+      lastHandledUrlRef.current = null;
+      throw err;
+    }
+  };
 
   // Handle deep link for OAuth callback (mobile only)
   useEffect(() => {
-    // Skip deep link handling on web - handled by callback route instead
     if (Platform.OS === 'web') return;
 
     const handleDeepLink = async ({ url }: { url: string }) => {
-      console.log('🔗 Deep link received:', url);
-      if (url.includes('code=')) {
-        console.log('🔄 Exchanging code from deep link...');
-        const code = new URL(url).searchParams.get('code');
-        if (!code) {
-          console.warn('❌ No code parameter found in deep link callback');
-          return;
-        }
-        const authCode = `${code}`;
-        console.log('🔐 exchangeCodeForSession payload (deep link):', authCode, typeof authCode);
-        const { error } = await supabase.auth.exchangeCodeForSession(authCode);
-        if (error) console.warn('❌ exchangeCodeForSession error:', error.message);
-        else console.log('✅ Auth successful via deep link');
+      console.log('dY"- Deep link received:', url);
+      try {
+        await processAuthRedirect(url);
+      } catch (error) {
+        console.warn('??O Deep link exchange threw', error);
       }
     };
 
     const sub = Linking.addEventListener('url', handleDeepLink);
     Linking.getInitialURL().then((url) => {
-      console.log('🔗 Initial URL:', url);
+      console.log('dY"- Initial URL:', url);
       if (url) handleDeepLink({ url });
     });
     return () => sub.remove();
@@ -73,9 +104,9 @@ export function useAuth() {
   }, []);
 
   const signInWithGoogle = async () => {
-    console.log('🔐 Starting OAuth with redirectTo:', REDIRECT_URI);
+    console.log('dY"? Starting OAuth with redirectTo:', REDIRECT_URI);
+    lastHandledUrlRef.current = null;
 
-    // On web, use standard OAuth flow (no skipBrowserRedirect)
     if (Platform.OS === 'web') {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -85,10 +116,9 @@ export function useAuth() {
         },
       });
       if (error) throw error;
-      return; // Browser will handle the redirect
+      return;
     }
 
-    // On mobile, use skipBrowserRedirect and WebBrowser
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -100,35 +130,26 @@ export function useAuth() {
     if (error) throw error;
 
     if (data?.url) {
-      console.log('🌐 Opening browser...');
+      console.log('dYO? Opening browser...');
       const res = await WebBrowser.openAuthSessionAsync(data.url, REDIRECT_URI);
-      console.log('📱 WebBrowser result:', res);
+      console.log('dY"? WebBrowser result:', res);
 
       if (res.type === 'success' && res.url) {
-        console.log('✅ Success! URL:', res.url);
-        console.log('🔄 Exchanging code for session...');
-        const code = new URL(res.url).searchParams.get('code');
-        if (!code) {
-          console.error('❌ No code parameter found in OAuth callback URL');
-          throw new Error('No authorization code returned from provider');
-        }
-        const authCode = `${code}`;
-        console.log('🔐 exchangeCodeForSession payload (WebBrowser result):', authCode, typeof authCode);
-        const { error: exErr } = await supabase.auth.exchangeCodeForSession(authCode);
-        if (exErr) {
-          console.error('❌ Exchange error:', exErr);
+        try {
+          await processAuthRedirect(res.url);
+        } catch (exErr) {
+          console.error('??O Exchange error:', exErr);
           throw exErr;
         }
-        console.log('✅ Auth successful!');
-      } else {
-        console.log('❌ Auth ended without success:', res.type);
+      } else if (res.type !== 'dismiss') {
+        console.log('??O Auth ended without success:', res.type);
       }
     }
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    console.log('👋 Signed out');
+    console.log('dY`< Signed out');
   };
 
   const signInWithPhone = async (phone: string) => {

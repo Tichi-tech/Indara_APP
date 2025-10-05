@@ -15,7 +15,7 @@ export default function RootLayout() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const isSongPlayerRoute = pathname?.startsWith('/(tabs)/now-playing');
+  const isSongPlayerRoute = pathname?.includes('/now-playing');
 
   // Check session on app start
   useEffect(() => {

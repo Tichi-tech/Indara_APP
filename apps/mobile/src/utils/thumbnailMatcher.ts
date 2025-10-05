@@ -86,3 +86,37 @@ const scoreForContent = (content: string, set: ThumbnailSet) => {
   });
   return score;
 };
+
+/**
+ * Resolves image URLs - converts relative paths to absolute URLs
+ */
+export const resolveImageUrl = (uri?: string | null): string | undefined => {
+  if (!uri) return undefined;
+  if (uri.startsWith('http')) return uri;
+  return `${REMOTE_BASE}${uri}`;
+};
+
+/**
+ * Gets a playlist image based on name/title with smart fallback
+ */
+export const getPlaylistImage = (name: string, thumbnailUrl?: string | null): string => {
+  if (thumbnailUrl) return resolveImageUrl(thumbnailUrl) || getDefaultPlaylistImage(name);
+  return getDefaultPlaylistImage(name);
+};
+
+/**
+ * Gets default playlist image based on name keywords
+ */
+const getDefaultPlaylistImage = (name: string): string => {
+  const lower = name.toLowerCase();
+
+  if (lower.includes('sleep')) return resolveImageUrl('/thumbnails/sleep/sleep-soothing.png')!;
+  if (lower.includes('meditation')) return resolveImageUrl('/thumbnails/meditation/Meditation-clam.png')!;
+  if (lower.includes('anxiety') || lower.includes('calm')) return resolveImageUrl('/thumbnails/relax/relax-calm.png')!;
+  if (lower.includes('focus') || lower.includes('study')) return resolveImageUrl('/thumbnails/study/study-focus.png')!;
+  if (lower.includes('nature') || lower.includes('forest')) return resolveImageUrl('/thumbnails/forest/nature-healing.png')!;
+  if (lower.includes('ocean') || lower.includes('water')) return resolveImageUrl('/thumbnails/ocean/ocean.png')!;
+  if (lower.includes('rain')) return resolveImageUrl('/thumbnails/rain/ambient-rainy.png')!;
+
+  return resolveImageUrl('/thumbnails/ambient/ambient-sunset.png')!;
+};

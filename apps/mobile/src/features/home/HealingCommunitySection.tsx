@@ -1,4 +1,4 @@
-import { memo, useEffect, useState, useCallback } from 'react';
+import { memo, useEffect, useState, useCallback, useMemo } from 'react';
 import { ActivityIndicator, ImageBackground, Pressable, ScrollView, View, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -7,37 +7,37 @@ import { Caption, Card, H2, P } from '@/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlayer } from '@/hooks/usePlayer';
 import type { Track } from '@/types/music';
+import type { CommunityTrack, TrackStats } from '@/types/home';
 import { musicApi } from '@/services/musicApi';
 import { getSmartThumbnail } from '@/utils/thumbnailMatcher';
 
-type CommunityTrack = {
-  id: string;
-  title: string;
-  description: string;
-  tags: string;
-  duration?: string;
-  audio_url?: string;
-  creator?: string;
-  image?: string;
+type HealingCommunitySectionProps = {
+  tracks?: CommunityTrack[];
+  stats?: Record<string, TrackStats>;
 };
 
 const fallbackImage = 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=640&q=80';
 
-const resolveImage = (track: CommunityTrack) => {
-  if (track.image) return track.image;
-  return getSmartThumbnail(track.title, track.description, track.tags);
-};
-
-function HealingCommunitySectionComponent() {
+function HealingCommunitySectionComponent({ tracks: propTracks, stats: propStats }: HealingCommunitySectionProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { current, isPlaying, loadAndPlay, toggle } = usePlayer();
 
-  const [tracks, setTracks] = useState<CommunityTrack[]>([]);
-  const [stats, setStats] = useState<Record<string, { plays: number; likes: number }>>({});
-  const [loading, setLoading] = useState(true);
+  // Use props if provided, otherwise fetch data (fallback for standalone usage)
+  const [tracks, setTracks] = useState<CommunityTrack[]>(propTracks || []);
+  const [stats, setStats] = useState<Record<string, TrackStats>>(propStats || {});
+  const [loading, setLoading] = useState(!propTracks);
 
   useEffect(() => {
+    // If props are provided, update state and skip fetching
+    if (propTracks && propStats) {
+      setTracks(propTracks);
+      setStats(propStats);
+      setLoading(false);
+      return;
+    }
+
+    // Otherwise, fetch data (for standalone usage)
     let isMounted = true;
 
     const run = async () => {
@@ -46,24 +46,16 @@ function HealingCommunitySectionComponent() {
 
       if (!isMounted) return;
 
-      const statsMap: Record<string, { plays: number; likes: number }> = {};
+      // ✅ Batch fetch all stats in ONE query instead of N queries
+      const trackIds = community.map((track) => track.id);
+      const { data: statsMap } = await musicApi.getBatchTrackStats(trackIds, user?.id);
 
-      const enriched = await Promise.all(
-        community.map(async (track) => {
-          const statsResult = await musicApi.getTrackStats(track.id, user?.id);
-          if (statsResult.data) {
-            statsMap[track.id] = {
-              plays: statsResult.data.plays,
-              likes: statsResult.data.likes,
-            };
-          }
+      if (!isMounted) return;
 
-          return {
-            ...track,
-            image: track.image || resolveImage(track) || fallbackImage,
-          };
-        })
-      );
+      const enriched = community.map((track) => ({
+        ...track,
+        image: track.image || getSmartThumbnail(track.title, track.description, track.tags) || fallbackImage,
+      }));
 
       if (isMounted) {
         setTracks(enriched);
@@ -78,7 +70,7 @@ function HealingCommunitySectionComponent() {
     return () => {
       isMounted = false;
     };
-  }, [user?.id]);
+  }, [propTracks, propStats, user?.id]);
 
   const handlePlay = useCallback(
     async (track: CommunityTrack) => {
@@ -89,7 +81,7 @@ function HealingCommunitySectionComponent() {
         title: track.title,
         artist: track.creator ?? 'Community Artist',
         audio_url: track.audio_url,
-        image_url: resolveImage(track) || fallbackImage,
+        image_url: track.image || getSmartThumbnail(track.title, track.description, track.tags) || fallbackImage,
       };
 
       if (current?.id === track.id) {
@@ -103,10 +95,13 @@ function HealingCommunitySectionComponent() {
     [current?.id, loadAndPlay, toggle, user?.id]
   );
 
+  // Memoize track IDs to prevent unnecessary subscription re-initialization
+  const trackIds = useMemo(() => tracks.map((track) => track.id), [tracks]);
+
   useEffect(() => {
-    if (!tracks.length) return;
-    const ids = tracks.map((track) => track.id);
-    const unsubscribe = musicApi.subscribeToTrackStats(ids, (trackId, payload) => {
+    if (!trackIds.length) return;
+
+    const unsubscribe = musicApi.subscribeToTrackStats(trackIds, (trackId, payload) => {
       setStats((prev) => ({
         ...prev,
         [trackId]: {
@@ -117,7 +112,7 @@ function HealingCommunitySectionComponent() {
     });
 
     return unsubscribe;
-  }, [tracks.map((t) => t.id).join(',')]);
+  }, [trackIds]);
 
   const currentTrackId = current?.id;
 
@@ -195,11 +190,31 @@ type TrackCardProps = {
 };
 
 const TrackCard = memo(({ track, isActive, stats, onPlay, isLast }: TrackCardProps) => {
-  const imageUri = resolveImage(track) || fallbackImage;
-  const [minutes, seconds] = (track.duration || '3:45').split(':');
-  const minutesLabel = minutes ?? '0';
-  const secondsLabel = (seconds ?? '0').padStart(2, '0');
-  const durationLabel = `${minutesLabel}:${secondsLabel}`;
+  const imageUri = track.image || getSmartThumbnail(track.title, track.description, track.tags) || fallbackImage;
+
+  // Parse duration - handle range format like "3-4" from database
+  const formatDuration = (duration?: string) => {
+    if (!duration) return '3:45';
+
+    // Handle range format like "3-4" (minutes range)
+    if (duration.includes('-')) {
+      const [min, max] = duration.split('-').map(Number);
+      if (!isNaN(min) && !isNaN(max)) {
+        const avgMinutes = Math.floor((min + max) / 2);
+        return `${avgMinutes}:30`;
+      }
+    }
+
+    // Already in MM:SS format, return as-is
+    if (duration.includes(':')) {
+      return duration;
+    }
+
+    // Just return the value
+    return duration;
+  };
+
+  const durationLabel = formatDuration(track.duration);
   const player = usePlayer();
   const playing = player.current?.id === track.id && player.isPlaying;
 
@@ -303,12 +318,15 @@ const styles = StyleSheet.create({
   carouselContent: {
     paddingLeft: 20,
     paddingRight: 32,
+    paddingVertical: 4,
   },
   carouselRow: {
     flexDirection: 'row',
+    height: 278,
   },
   trackCardWrap: {
     width: 192,
+    height: 270,
     marginRight: 16,
   },
   trackCardWrapLast: {
@@ -318,6 +336,7 @@ const styles = StyleSheet.create({
     padding: 0,
     borderRadius: 24,
     overflow: 'hidden',
+    height: '100%',
   },
   trackImage: {
     height: 144,
@@ -364,6 +383,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 14,
     paddingBottom: 16,
+    height: 126,
+    justifyContent: 'space-between',
   },
   trackTitle: {
     fontSize: 15,

@@ -4,14 +4,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import SongPlayerScreen, { type PlayerSong } from '@/screens/SongPlayerScreen';
 import { usePlayer } from '@/hooks/usePlayer';
-import { useAuth } from '@/hooks/useAuth';
-import type { BottomNavProps } from '@/components/BottomNav';
 
 export default function NowPlaying() {
   const router = useRouter();
   const { trackId } = useLocalSearchParams<{ trackId?: string }>();
   const { current, queue } = usePlayer();
-  const { user } = useAuth();
 
   const activeTrack = useMemo(() => {
     if (trackId) {
@@ -38,28 +35,10 @@ export default function NowPlaying() {
     creator: activeTrack.artist,
   };
 
-  const accountInitial = (user?.email ?? user?.user_metadata?.name ?? 'S').slice(0, 1).toUpperCase();
-
-  const bottomNavProps: BottomNavProps = {
-    active: 'home',
-    onHome: () => router.replace('/(tabs)/index'),
-    onLibrary: () => router.replace('/(tabs)/library'),
-    onCreate: () => router.push('/create'),
-    onInbox: () => router.replace('/(tabs)/inbox'),
-    onAccount: () => router.replace('/(tabs)/profile'),
-    accountInitial,
-  };
-
   return (
     <SongPlayerScreen
       song={song}
       onBack={() => router.back()}
-      bottomNavProps={bottomNavProps}
-      onCreate={() => router.push('/create')}
-      onLibrary={() => router.replace('/(tabs)/library')}
-      onInbox={() => router.replace('/(tabs)/inbox')}
-      onAccount={() => router.replace('/(tabs)/profile')}
-      accountInitial={accountInitial}
     />
   );
 }

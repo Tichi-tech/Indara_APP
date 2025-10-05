@@ -2,15 +2,7 @@ import { memo } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { Card, Caption, H2, P } from '@/ui';
-
-type PlaylistItem = {
-  id: string;
-  title: string;
-  description: string;
-  image?: string;
-  trackCount?: number;
-  duration?: string;
-};
+import type { PlaylistItem } from '@/types/home';
 
 type PlaylistRailProps = {
   title: string;

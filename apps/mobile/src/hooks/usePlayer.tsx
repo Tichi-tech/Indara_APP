@@ -59,6 +59,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       idxRef.current = q.findIndex((x) => x.id === t.id) ?? 0;
     }
     setCurrent(t);
+    setMiniPlayerVisible(true); // Ensure mini player is visible
     if (t.audio_url) {
       await audioService.load(t.audio_url, true);
       await AsyncStorage.setItem('lastTrack', JSON.stringify({ id: t.id }));

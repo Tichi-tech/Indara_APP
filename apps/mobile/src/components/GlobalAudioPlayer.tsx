@@ -16,10 +16,9 @@ function GlobalAudioPlayerComponent({ onPress }: GlobalAudioPlayerProps) {
     toggle,
     next,
     prev,
-    isMiniPlayerVisible,
   } = usePlayer();
 
-  if (!current || !isMiniPlayerVisible) return null;
+  if (!current) return null;
 
   const queueLength = queue.length;
   const trackIndex = queue.findIndex((item) => item.id === current.id);
@@ -85,11 +84,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    zIndex: 1000,
+    elevation: 5,
   },
   infoBlock: {
     flexDirection: 'row',
