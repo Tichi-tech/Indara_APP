@@ -1,6 +1,9 @@
 export * from './AccountSettingsScreen';
+export * from './AgeSelectionScreen';
 export * from './AnalyticsDashboard';
+export * from './CreateAccountScreen';
 export * from './CreateMusicScreen';
+export * from './DisplayNameScreen';
 export * from './HealingMusicPlaylist';
 export * from './NameEntryScreen';
 export * from './MySongsScreen';
@@ -10,3 +13,5 @@ export * from './MeditationPlaylistScreen';
 export * from './NotificationsScreen';
 export * from './PlaylistScreen';
 export * from './ProfileScreen';
+export * from './SplashScreen';
+export * from './WelcomeScreen';

@@ -276,8 +276,8 @@ function MySongsScreenComponent({
           <View style={styles.coverOverlay}>
             <Feather
               name={playing ? 'pause' : 'play'}
-              size={18}
-              color="#0f172a"
+              size={16}
+              color="#ffffff"
               style={!playing ? styles.playIconOffset : undefined}
             />
           </View>
@@ -611,12 +611,12 @@ const styles = StyleSheet.create({
   },
   coverOverlay: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
+    bottom: 6,
+    right: 6,
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(17,24,39,0.85)',
     alignItems: 'center',
     justifyContent: 'center',
   },

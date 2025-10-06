@@ -43,15 +43,7 @@ function AccountSettingsScreenComponent({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onBack}
-          style={styles.headerButton}
-        >
-          <Feather name="arrow-left" size={20} color="#111827" />
-        </Pressable>
         <Text style={styles.headerTitle}>Account</Text>
-        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
@@ -129,31 +121,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
   },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 24,
     paddingVertical: 16,
     backgroundColor: '#ffffff',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#e5e7eb',
   },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f3f4f6',
-  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#111827',
-  },
-  headerSpacer: {
-    width: 40,
-    height: 40,
   },
   scroll: {
     flex: 1,

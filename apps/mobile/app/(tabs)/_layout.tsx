@@ -2,6 +2,7 @@ import { Tabs, useRouter } from 'expo-router';
 
 import { BottomNav, BottomNavProps } from '@/components';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
 
 type RouteName = 'index' | 'library' | 'now-playing' | 'inbox' | 'profile' | 'player';
 
@@ -26,6 +27,7 @@ export default function TabsLayout() {
 function CustomTabBar({ state, navigation }: any) {
   const router = useRouter();
   const { user } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const currentRoute = state.routes[state.index]?.name as RouteName | undefined;
 
@@ -56,7 +58,7 @@ function CustomTabBar({ state, navigation }: any) {
       onCreate={() => router.push('/create')}
       onInbox={() => navigation.navigate('inbox')}
       onAccount={() => navigation.navigate('profile')}
-      badgeCount={0}
+      badgeCount={unreadCount}
     />
   );
 }

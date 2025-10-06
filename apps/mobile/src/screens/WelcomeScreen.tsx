@@ -1,5 +1,6 @@
 import { memo } from 'react';
-import { StyleSheet, Text, View, Pressable } from 'react-native';
+import { StyleSheet, Text, View, Pressable, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type WelcomeScreenProps = {
@@ -9,112 +10,120 @@ type WelcomeScreenProps = {
 
 function WelcomeScreenComponent({ onCreateAccount, onSignIn }: WelcomeScreenProps) {
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.brandBlock}>
-          <View style={styles.logoGlyph}>
-            <Text style={styles.logoGlyphLabel}>🎵</Text>
+    <LinearGradient
+      colors={['#29034A', '#520346', '#D300BE']}
+      locations={[0.12, 0.88, 1]}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.content}>
+          <Image
+            source={require('../../assets/logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <View style={styles.topSection}>
+            <Text style={styles.title}>Welcome</Text>
+            <Text style={styles.subtitle}>
+              Indara supports your well-being every day
+            </Text>
           </View>
-          <Text style={styles.brandTitle}>Indara</Text>
-        </View>
 
-        <View style={styles.heroBlock}>
-          <Text style={styles.heroTitle}>Welcome to Indara</Text>
-          <Text style={styles.heroSubtitle}>From your mind to healing music.</Text>
-        </View>
-
-        <View style={styles.actions}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onCreateAccount}
-            style={styles.primaryButton}
-          >
-            <Text style={styles.primaryLabel}>Create a free Indara account</Text>
-          </Pressable>
-          <View style={styles.secondaryRow}>
-            <Text style={styles.secondaryText}>Already have an account? </Text>
-            <Pressable accessibilityRole="button" onPress={onSignIn}>
-              <Text style={styles.secondaryLink}>Sign in</Text>
+          <View style={styles.bottomSection}>
+            <Pressable
+              accessibilityRole="button"
+              style={styles.primaryButton}
+              onPress={onCreateAccount}
+            >
+              <Text style={styles.primaryButtonText}>
+                Create your Indara account to begin
+              </Text>
             </Pressable>
+
+            <View style={styles.signInContainer}>
+              <Text style={styles.signInText}>Already have an account? </Text>
+              <Pressable accessibilityRole="button" onPress={onSignIn}>
+                <Text style={styles.signInLink}>Sign in</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
   container: {
     flex: 1,
-    padding: 24,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
     justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 48,
   },
-  brandBlock: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  logoImage: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    width: 200,
+    height: 200,
   },
-  logoGlyph: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-    justifyContent: 'center',
+  topSection: {
+    alignItems: 'flex-start',
+    marginTop: 180,
   },
-  logoGlyphLabel: {
-    fontSize: 16,
+  title: {
+    fontSize: 56,
+    fontWeight: '700',
+    color: '#EEDDEE',
+    marginBottom: 16,
+    fontFamily: 'SF Pro',
   },
-  brandTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  heroBlock: {
-    gap: 12,
-  },
-  heroTitle: {
-    fontSize: 44,
-    fontWeight: '300',
-    color: '#111827',
-    lineHeight: 50,
-  },
-  heroSubtitle: {
+  subtitle: {
     fontSize: 18,
-    color: '#6b7280',
+    color: '#EEDDEE',
+    opacity: 0.9,
+    lineHeight: 28,
+    maxWidth: 320,
+    fontFamily: 'SF Pro',
   },
-  actions: {
+  bottomSection: {
     gap: 24,
   },
   primaryButton: {
-    backgroundColor: '#111827',
-    borderRadius: 24,
-    paddingVertical: 16,
+    backgroundColor: '#E9D5FF',
+    borderRadius: 28,
+    paddingVertical: 20,
+    paddingHorizontal: 32,
     alignItems: 'center',
   },
-  primaryLabel: {
-    color: '#ffffff',
+  primaryButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#1F1F1F',
+    fontFamily: 'SF Pro',
   },
-  secondaryRow: {
+  signInContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  secondaryText: {
-    color: '#6b7280',
-    fontSize: 14,
+  signInText: {
+    fontSize: 16,
+    color: '#EEDDEE',
+    fontFamily: 'SF Pro',
   },
-  secondaryLink: {
-    color: '#111827',
-    fontSize: 14,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+  signInLink: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#EEDDEE',
+    fontFamily: 'SF Pro',
   },
 });
 

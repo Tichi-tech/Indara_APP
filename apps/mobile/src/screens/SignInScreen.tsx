@@ -1,6 +1,6 @@
 import { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, View, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -14,125 +14,149 @@ function SignInScreenComponent({ onBack, onPhone }: SignInScreenProps) {
   const { signInWithGoogle } = useAuth();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Pressable accessibilityRole="button" onPress={onBack} style={styles.headerButton}>
-          <Feather name="arrow-left" size={20} color="#111827" />
-        </Pressable>
-
-        <View style={styles.heroBlock}>
-          <Text style={styles.title}>{`Sign in to your\nIndara account`}</Text>
-        </View>
-
-        <View style={styles.actions}>
-          <Pressable accessibilityRole="button" onPress={onPhone} style={styles.primaryButton}>
-            <Feather name="phone" size={18} color="#ffffff" />
-            <Text style={styles.primaryLabel}>Use my phone number</Text>
+    <LinearGradient
+      colors={['#29034A', '#520346', '#D300BE']}
+      locations={[0.12, 0.88, 1]}
+      style={styles.container}
+    >
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <Pressable accessibilityRole="button" onPress={onBack} style={styles.backButton}>
+            <Feather name="arrow-left" size={32} color="#EEDDEE" />
           </Pressable>
-
-          <View style={styles.dividerRow}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerLabel}>or</Text>
-            <View style={styles.divider} />
-          </View>
-
-          <View style={styles.socialRow}>
-            <Pressable accessibilityRole="button" style={styles.socialButton}>
-              <Feather name="globe" size={22} color="#111827" />
-            </Pressable>
-            <Pressable accessibilityRole="button" style={styles.socialButton} onPress={() => signInWithGoogle?.()}>
-              <Feather name="globe" size={22} color="#111827" />
-            </Pressable>
-          </View>
+          <Text style={styles.headerTitle}>Sign in</Text>
         </View>
 
-        <Text style={styles.footerText}>
-          By signing in, you agree to the <Text style={styles.footerLink}>Terms of Service</Text>{' '}
-          and acknowledge the <Text style={styles.footerLink}>Privacy Policy</Text>.
-        </Text>
+        <View style={styles.mainContent}>
+          <Text style={styles.title}>Sign in to your{'\n'}Indara account</Text>
+
+          <View style={styles.buttonsContainer}>
+            <Pressable accessibilityRole="button" onPress={onPhone} style={styles.optionButton}>
+              <Feather name="phone" size={28} color="#1F1F1F" />
+              <Text style={styles.optionButtonText}>Use my phone number</Text>
+            </Pressable>
+
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <Pressable accessibilityRole="button" style={styles.optionButton} onPress={() => signInWithGoogle?.()}>
+              <Image
+                source={require('../../assets/Gmail_icon_(2020).svg.png')}
+                style={styles.gmailIcon}
+                resizeMode="contain"
+              />
+              <Text style={styles.optionButtonText}>Sign in with your Gmail</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.termsContainer}>
+            <Text style={styles.termsText}>
+              By signing in, you agree to the{' '}
+              <Text style={styles.termsLink}>Terms of service</Text>{' '}
+              and acknowledge the{' '}
+              <Text style={styles.termsLink}>Privacy Policy</Text>
+            </Text>
+          </View>
+        </View>
       </View>
-    </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
   container: {
     flex: 1,
-    padding: 24,
-    gap: 32,
   },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 48,
+  },
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroBlock: {
-    gap: 16,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: '300',
-    color: '#111827',
-  },
-  actions: {
+    paddingBottom: 24,
     gap: 24,
   },
-  primaryButton: {
-    borderRadius: 20,
-    backgroundColor: '#111827',
-    paddingVertical: 16,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 10,
+  backButton: {
+    padding: 4,
   },
-  primaryLabel: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#EEDDEE',
+    fontFamily: 'SF Pro',
   },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  divider: {
+  mainContent: {
     flex: 1,
-    height: 1,
-    backgroundColor: '#e2e8f0',
+    justifyContent: 'space-between',
   },
-  dividerLabel: {
-    color: '#94a3b8',
+  title: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: '#EEDDEE',
+    marginBottom: 64,
+    lineHeight: 56,
+    fontFamily: 'SF Pro',
   },
-  socialRow: {
+  buttonsContainer: {
+    gap: 32,
+    marginBottom: 48,
+  },
+  optionButton: {
+    backgroundColor: '#E9D5FF',
+    borderRadius: 28,
+    paddingVertical: 20,
+    paddingHorizontal: 32,
     flexDirection: 'row',
-    justifyContent: 'center',
+    alignItems: 'center',
     gap: 16,
   },
-  socialButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: '#f3f4f6',
+  optionButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F1F1F',
+    fontFamily: 'SF Pro',
+  },
+  gmailIcon: {
+    width: 28,
+    height: 28,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 16,
   },
-  footerText: {
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#EEDDEE',
+    opacity: 0.3,
+  },
+  dividerText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#EEDDEE',
+    fontFamily: 'SF Pro',
+  },
+  termsContainer: {
+    marginTop: 'auto',
+  },
+  termsText: {
+    fontSize: 14,
+    color: '#EEDDEE',
+    opacity: 0.9,
+    lineHeight: 22,
     textAlign: 'center',
-    color: '#64748b',
-    fontSize: 13,
+    fontFamily: 'SF Pro',
   },
-  footerLink: {
-    color: '#111827',
-    fontWeight: '600',
+  termsLink: {
     textDecorationLine: 'underline',
+    fontWeight: '600',
   },
 });
 

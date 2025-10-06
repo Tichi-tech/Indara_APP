@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -22,18 +22,46 @@ export type PhoneAuthScreenProps = {
 
 function PhoneAuthScreenComponent({ mode, onBack, onCodeSent }: PhoneAuthScreenProps) {
   const { signInWithPhone } = useAuth();
-  const [phone, setPhone] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    // Focus input after a short delay to ensure keyboard appears
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const formatPhoneNumber = (text: string) => {
+    const cleaned = text.replace(/\D/g, '');
+
+    if (cleaned.length <= 3) {
+      return cleaned;
+    } else if (cleaned.length <= 6) {
+      return `${cleaned.slice(0, 3)}-${cleaned.slice(3)}`;
+    } else {
+      return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+    }
+  };
+
+  const handlePhoneChange = (text: string) => {
+    const formatted = formatPhoneNumber(text);
+    setPhoneNumber(formatted);
+  };
 
   const handleSubmit = async () => {
-    if (!phone.trim()) return;
+    if (!phoneNumber.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      const { error } = await signInWithPhone?.(phone);
+      // Convert formatted phone number back to raw format for auth
+      const cleanedPhone = '+1' + phoneNumber.replace(/\D/g, '');
+      const { error } = await signInWithPhone?.(cleanedPhone);
       if (error) throw error;
-      onCodeSent?.(phone);
+      onCodeSent?.(cleanedPhone);
     } catch (err: any) {
       setError(err?.message ?? 'Failed to send verification code.');
     } finally {
@@ -42,102 +70,134 @@ function PhoneAuthScreenComponent({ mode, onBack, onCodeSent }: PhoneAuthScreenP
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.container}>
-          <Pressable accessibilityRole="button" onPress={onBack} style={styles.headerButton}>
-            <Feather name="arrow-left" size={20} color="#111827" />
+    <LinearGradient
+      colors={['#29034A', '#520346', '#D300BE']}
+      locations={[0.12, 0.88, 1]}
+      style={styles.container}
+    >
+      <View style={styles.flex}>
+        <View style={styles.header}>
+          <Pressable onPress={onBack} style={styles.backButton} accessibilityRole="button">
+            <Feather name="arrow-left" size={32} color="#FFFFFF" />
+          </Pressable>
+          <Text style={styles.headerTitle}>Your phone number</Text>
+        </View>
+
+        <View style={styles.content}>
+          <Pressable
+            style={styles.phoneInputContainer}
+            onPress={() => inputRef.current?.focus()}
+          >
+            <Text style={styles.countryCode}>+1 </Text>
+            <TextInput
+              ref={inputRef}
+              style={styles.phoneInput}
+              value={phoneNumber}
+              onChangeText={handlePhoneChange}
+              placeholder="201-555-0123"
+              placeholderTextColor="rgba(255, 255, 255, 0.3)"
+              keyboardType="phone-pad"
+              maxLength={12}
+              editable={!loading}
+              autoFocus
+              returnKeyType="done"
+            />
           </Pressable>
 
-          <View style={styles.content}>
-            <Text style={styles.title}>
-              {mode === 'signin' ? 'Sign in with your phone number' : 'Create an account with your phone number'}
-            </Text>
-            <TextInput
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="+1 (555) 123-4567"
-              keyboardType="phone-pad"
-              style={styles.input}
-              editable={!loading}
-            />
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-            <Pressable
-              accessibilityRole="button"
-              onPress={handleSubmit}
-              style={[styles.ctaButton, (!phone.trim() || loading) && styles.ctaDisabled]}
-              disabled={!phone.trim() || loading}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Text style={styles.ctaLabel}>Send verification code</Text>
-              )}
-            </Pressable>
-          </View>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <Pressable
+            accessibilityRole="button"
+            style={[styles.confirmButton, (!phoneNumber.trim() || loading) && styles.confirmButtonDisabled]}
+            onPress={handleSubmit}
+            disabled={!phoneNumber.trim() || loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#1F1F1F" />
+            ) : (
+              <Text style={styles.confirmButtonText}>Confirm</Text>
+            )}
+          </Pressable>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   flex: {
     flex: 1,
   },
-  container: {
-    flex: 1,
-    padding: 24,
-    gap: 32,
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 24,
     gap: 24,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '300',
-    color: '#111827',
+  backButton: {
+    padding: 4,
   },
-  input: {
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#111827',
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#EEDDEE',
+    fontFamily: 'SF Pro',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 80,
+  },
+  phoneInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 48,
+  },
+  countryCode: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#EEDDEE',
+    fontFamily: 'SF Pro',
+  },
+  phoneInput: {
+    flex: 1,
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#EEDDEE',
+    padding: 0,
+    fontFamily: 'SF Pro',
   },
   error: {
-    color: '#ef4444',
-    fontSize: 13,
+    color: '#fca5a5',
+    fontSize: 16,
+    marginBottom: 24,
+    fontWeight: '500',
+    fontFamily: 'SF Pro',
   },
-  ctaButton: {
-    borderRadius: 18,
-    backgroundColor: '#111827',
-    paddingVertical: 16,
+  confirmButton: {
+    backgroundColor: '#E9D5FF',
+    borderRadius: 28,
+    paddingVertical: 20,
+    paddingHorizontal: 32,
     alignItems: 'center',
+    position: 'absolute',
+    bottom: 48,
+    left: 24,
+    right: 24,
   },
-  ctaDisabled: {
-    backgroundColor: '#cbd5f5',
+  confirmButtonDisabled: {
+    backgroundColor: 'rgba(233, 213, 255, 0.5)',
   },
-  ctaLabel: {
-    color: '#ffffff',
-    fontWeight: '600',
+  confirmButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F1F1F',
+    fontFamily: 'SF Pro',
   },
 });
 

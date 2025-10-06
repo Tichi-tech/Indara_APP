@@ -11,24 +11,54 @@ import { GlobalAudioPlayer } from '../src/components';
 
 export default function RootLayout() {
   const [session, setSession] = React.useState<Session | null>(null);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
   const isSongPlayerRoute = pathname?.includes('/now-playing');
 
+  // Check if user has completed onboarding
+  const checkOnboardingStatus = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('user_id', userId)
+        .single();
+
+      // User has completed onboarding if they have a display_name
+      return !error && data?.display_name;
+    } catch {
+      return false;
+    }
+  };
+
   // Check session on app start
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       console.log('📱 Session check:', data.session ? 'LOGGED IN' : 'NOT LOGGED IN');
       setSession(data.session);
+
+      if (data.session?.user) {
+        const completed = await checkOnboardingStatus(data.session.user.id);
+        setHasCompletedOnboarding(completed);
+      }
+
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, updatedSession) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, updatedSession) => {
       console.log('📱 Auth state change:', event, updatedSession ? 'LOGGED IN' : 'NOT LOGGED IN');
       setSession(updatedSession);
+
+      if (updatedSession?.user) {
+        const completed = await checkOnboardingStatus(updatedSession.user.id);
+        setHasCompletedOnboarding(completed);
+      } else {
+        setHasCompletedOnboarding(false);
+      }
     });
 
     return () => {
@@ -42,12 +72,15 @@ export default function RootLayout() {
     return null; // Or a loading spinner
   }
 
+  const showMainApp = session && hasCompletedOnboarding;
+  const showOnboarding = !session || (session && !hasCompletedOnboarding);
+
   return (
     <SafeAreaProvider>
       <PlayerProvider>
         <View style={{ flex: 1 }}>
           <Stack screenOptions={{ headerShown: false }}>
-            {session ? (
+            {showMainApp ? (
               <>
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="playlist/[id]" options={{ headerShown: true, title: 'Playlist' }} />
@@ -63,7 +96,7 @@ export default function RootLayout() {
               <Stack.Screen name="(auth)" />
             )}
           </Stack>
-          {session && !isSongPlayerRoute ? (
+          {showMainApp && !isSongPlayerRoute ? (
             <GlobalAudioPlayer onPress={() => router.push('/(tabs)/now-playing')} />
           ) : null}
         </View>

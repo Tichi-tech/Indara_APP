@@ -15,7 +15,7 @@ export default function VerificationRoute() {
     <VerificationScreen
       phoneNumber={phone}
       onBack={() => router.back()}
-      onVerified={() => router.replace('/(auth)/complete')}
+      onVerified={() => router.push('/(auth)/display-name')}
     />
   );
 }

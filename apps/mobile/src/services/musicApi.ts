@@ -170,7 +170,7 @@ export const musicApi = {
     return { data: transformed, error: null } as const;
   },
 
-  async getTrackStats(trackId: string, _userId?: string | null) {
+  async getTrackStats(trackId: string, userId?: string | null) {
     if (!trackId) return { data: null, error: null } as const;
 
     try {
@@ -187,12 +187,25 @@ export const musicApi = {
         return { data: null, error } as const;
       }
 
+      // Check if user has liked this track
+      let isLiked = false;
+      if (userId) {
+        const { data: likeData } = await supabase
+          .from('track_likes')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('track_id', trackId)
+          .maybeSingle();
+
+        isLiked = Boolean(likeData);
+      }
+
       if (!data) {
-        return { data: { plays: 0, likes: 0, isLiked: false }, error: null } as const;
+        return { data: { plays: 0, likes: 0, isLiked }, error: null } as const;
       }
 
       return {
-        data: { plays: data.play_count ?? 0, likes: data.like_count ?? 0, isLiked: false },
+        data: { plays: data.play_count ?? 0, likes: data.like_count ?? 0, isLiked },
         error: null,
       } as const;
     } catch (e: any) {
@@ -207,7 +220,7 @@ export const musicApi = {
    * Batch fetch track stats for multiple tracks in a single query
    * This solves the N+1 query problem
    */
-  async getBatchTrackStats(trackIds: string[], _userId?: string | null) {
+  async getBatchTrackStats(trackIds: string[], userId?: string | null) {
     if (!trackIds.length) return { data: {}, error: null } as const;
 
     try {
@@ -228,12 +241,26 @@ export const musicApi = {
         return { data: fallbackMap, error } as const;
       }
 
+      // Fetch user likes for all tracks in one query
+      let userLikes: Set<string> = new Set();
+      if (userId) {
+        const { data: likesData } = await supabase
+          .from('track_likes')
+          .select('track_id')
+          .eq('user_id', userId)
+          .in('track_id', trackIds);
+
+        if (likesData) {
+          userLikes = new Set(likesData.map((like) => like.track_id));
+        }
+      }
+
       // Transform array into a map for easy lookup
       const statsMap = (data || []).reduce((acc, stat) => {
         acc[stat.track_id] = {
           plays: stat.play_count ?? 0,
           likes: stat.like_count ?? 0,
-          isLiked: false,
+          isLiked: userLikes.has(stat.track_id),
         };
         return acc;
       }, {} as Record<string, { plays: number; likes: number; isLiked: boolean }>);
@@ -241,7 +268,7 @@ export const musicApi = {
       // Fill in missing tracks with zero stats
       trackIds.forEach((id) => {
         if (!statsMap[id]) {
-          statsMap[id] = { plays: 0, likes: 0, isLiked: false };
+          statsMap[id] = { plays: 0, likes: 0, isLiked: userLikes.has(id) };
         }
       });
 
@@ -270,27 +297,59 @@ export const musicApi = {
     if (!trackIds.length) return () => {};
 
     const list = trackIds.map((id) => `"${id}"`).join(',');
+
+    // Helper to fetch and emit updated stats
+    const fetchAndEmit = async (trackId: string) => {
+      const { data } = await supabase
+        .from('track_stats_view')
+        .select('track_id, play_count, like_count')
+        .eq('track_id', trackId)
+        .maybeSingle();
+
+      if (data) {
+        callback(trackId, {
+          plays: data.play_count ?? 0,
+          likes: data.like_count ?? 0,
+        });
+      }
+    };
+
     try {
       const channel = supabase
-      .channel('track-stats')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'track_stats_view',
-          filter: `track_id=in.(${list})`,
-        },
-        (payload) => {
-          const newRow: any = payload.new;
-          if (!newRow?.track_id) return;
-          callback(newRow.track_id, {
-            plays: newRow.play_count ?? 0,
-            likes: newRow.like_count ?? 0,
-          });
-        }
-      )
-      .subscribe();
+        .channel('track-stats-realtime')
+        // Listen to track_likes changes
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'track_likes',
+            filter: `track_id=in.(${list})`,
+          },
+          (payload) => {
+            const trackId = (payload.new as any)?.track_id || (payload.old as any)?.track_id;
+            if (trackId) {
+              void fetchAndEmit(trackId);
+            }
+          }
+        )
+        // Listen to track_plays changes
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'track_plays',
+            filter: `track_id=in.(${list})`,
+          },
+          (payload) => {
+            const trackId = (payload.new as any)?.track_id || (payload.old as any)?.track_id;
+            if (trackId) {
+              void fetchAndEmit(trackId);
+            }
+          }
+        )
+        .subscribe();
 
       return () => {
         supabase.removeChannel(channel);
@@ -502,9 +561,8 @@ export const musicApi = {
     try {
       const { data, error } = await supabase
         .from('playlist_tracks')
-        .select('*, generated_tracks(*)')
-        .eq('playlist_id', playlistId)
-        .order('created_at', { ascending: false });
+        .select('*, generated_tracks!playlist_tracks_track_id_fkey(*)')
+        .eq('playlist_id', playlistId);
 
       if (error) throw error;
 

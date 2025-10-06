@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useRef } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -21,124 +21,176 @@ type VerificationScreenProps = {
 
 function VerificationScreenComponent({ phoneNumber, onBack, onVerified }: VerificationScreenProps) {
   const { verifyOtp } = useAuth();
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(['', '', '', '', '', '', '']);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const inputRefs = useRef<(TextInput | null)[]>([]);
 
-  const handleSubmit = async () => {
-    if (code.length !== 6) return;
+  const handleSubmit = async (fullCode: string) => {
+    if (fullCode.length !== 7 || loading) return;
     setLoading(true);
     setError(null);
     try {
-      const { error } = await verifyOtp?.(phoneNumber, code);
+      const { error } = await verifyOtp?.(phoneNumber, fullCode);
       if (error) throw error;
       onVerified?.();
     } catch (err: any) {
       setError(err?.message ?? 'Invalid verification code. Please try again.');
+      // Clear code on error
+      setCode(['', '', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
     } finally {
       setLoading(false);
     }
   };
 
+  const handleCodeChange = (text: string, index: number) => {
+    if (text.length > 1) {
+      text = text[text.length - 1];
+    }
+
+    const newCode = [...code];
+    newCode[index] = text;
+    setCode(newCode);
+
+    // Auto-advance to next input
+    if (text && index < 6) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit when all 7 digits are entered
+    if (text && index === 6) {
+      const fullCode = newCode.join('');
+      if (fullCode.length === 7) {
+        void handleSubmit(fullCode);
+      }
+    }
+  };
+
+  const handleKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && !code[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <LinearGradient
+      colors={['#29034A', '#520346', '#D300BE']}
+      locations={[0.12, 0.88, 1]}
+      style={styles.container}
+    >
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.container}>
-          <Pressable accessibilityRole="button" onPress={onBack} style={styles.headerButton}>
-            <Feather name="arrow-left" size={20} color="#111827" />
+        <View style={styles.header}>
+          <Pressable onPress={onBack} style={styles.backButton} accessibilityRole="button">
+            <Feather name="arrow-left" size={32} color="#FFFFFF" />
           </Pressable>
+          <Text style={styles.headerTitle}>Enter confirmation code</Text>
+        </View>
 
-          <View style={styles.content}>
-            <Text style={styles.title}>Enter verification code</Text>
-            <Text style={styles.subtitle}>We sent a 6-digit code to {phoneNumber}</Text>
-            <TextInput
-              style={styles.input}
-              value={code}
-              onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="123456"
-              keyboardType="number-pad"
-              textAlign="center"
-              maxLength={6}
-            />
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-            <Pressable
-              accessibilityRole="button"
-              onPress={handleSubmit}
-              style={[styles.ctaButton, (code.length !== 6 || loading) && styles.ctaDisabled]}
-              disabled={code.length !== 6 || loading}
-            >
-              <Text style={styles.ctaLabel}>{loading ? 'Verifying…' : 'Verify code'}</Text>
-            </Pressable>
+        <View style={styles.content}>
+          <View style={styles.codeContainer}>
+            {code.map((digit, index) => (
+              <View key={index} style={styles.digitWrapper}>
+                <TextInput
+                  ref={(ref) => (inputRefs.current[index] = ref)}
+                  style={styles.digitInput}
+                  value={digit}
+                  onChangeText={(text) => handleCodeChange(text, index)}
+                  onKeyPress={(e) => handleKeyPress(e, index)}
+                  keyboardType="number-pad"
+                  maxLength={1}
+                  selectTextOnFocus
+                  editable={!loading}
+                />
+                {!digit && <View style={styles.digitPlaceholder} />}
+              </View>
+            ))}
           </View>
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {loading ? <Text style={styles.loadingText}>Verifying...</Text> : null}
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   flex: {
     flex: 1,
   },
-  container: {
-    flex: 1,
-    padding: 24,
-    gap: 32,
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 24,
     gap: 24,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '300',
-    color: '#111827',
+  backButton: {
+    padding: 4,
   },
-  subtitle: {
-    fontSize: 15,
-    color: '#6b7280',
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#EEDDEE',
+    fontFamily: 'SF Pro',
   },
-  input: {
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 18,
-    letterSpacing: 6,
-    color: '#111827',
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 120,
+  },
+  codeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  digitWrapper: {
+    flex: 1,
+    position: 'relative',
+  },
+  digitInput: {
+    fontSize: 56,
+    fontWeight: '700',
+    color: '#EEDDEE',
+    textAlign: 'center',
+    padding: 0,
+    height: 80,
+    fontFamily: 'SF Pro',
+  },
+  digitPlaceholder: {
+    position: 'absolute',
+    bottom: 10,
+    left: '50%',
+    marginLeft: -20,
+    width: 40,
+    height: 4,
+    backgroundColor: '#EEDDEE',
+    opacity: 0.3,
   },
   error: {
-    color: '#ef4444',
-    fontSize: 13,
+    color: '#fca5a5',
+    fontSize: 16,
+    marginTop: 32,
     textAlign: 'center',
+    fontWeight: '500',
+    fontFamily: 'SF Pro',
   },
-  ctaButton: {
-    borderRadius: 18,
-    backgroundColor: '#111827',
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  ctaDisabled: {
-    backgroundColor: '#cbd5f5',
-  },
-  ctaLabel: {
-    color: '#ffffff',
-    fontWeight: '600',
+  loadingText: {
+    color: '#EEDDEE',
+    fontSize: 16,
+    marginTop: 32,
+    textAlign: 'center',
+    fontWeight: '500',
+    opacity: 0.8,
+    fontFamily: 'SF Pro',
   },
 });
 

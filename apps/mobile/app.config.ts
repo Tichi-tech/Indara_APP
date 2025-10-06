@@ -55,6 +55,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       permissions: ['RECORD_AUDIO'],
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
+      softwareKeyboardLayoutMode: 'pan',
     },
     web: {
       favicon: './assets/favicon.png',

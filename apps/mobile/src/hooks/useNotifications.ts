@@ -33,7 +33,7 @@ export function useNotifications() {
       setLoading(true);
       const { data, error } = await supabase
         .from('notifications')
-        .select(`*, sender:profiles!sender_id(display_name, avatar_url)`)
+        .select(`*, sender:profiles!notifications_sender_id_fkey(display_name, avatar_url)`)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -145,7 +145,7 @@ export function useNotifications() {
         async (payload) => {
           const { data } = await supabase
             .from('notifications')
-            .select(`*, sender:profiles!sender_id(display_name, avatar_url)`)
+            .select(`*, sender:profiles!notifications_sender_id_fkey(display_name, avatar_url)`)
             .eq('id', payload.new.id)
             .maybeSingle();
 

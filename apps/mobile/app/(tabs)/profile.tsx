@@ -99,15 +99,6 @@ export default function Profile() {
       onViewProfile={() => router.push('/account/profile')}
       settingsItems={settingsItems}
       versionLabel="Version 1.0.0"
-      bottomNavProps={{
-        active: 'account',
-        onHome: () => router.push('/(tabs)/index'),
-        onLibrary: () => router.push('/(tabs)/library'),
-        onCreate: () => router.push('/create'),
-        onInbox: () => router.push('/(tabs)/inbox'),
-        onAccount: () => {},
-        accountInitial: displayName.slice(0, 1).toUpperCase(),
-      }}
     />
   );
 }

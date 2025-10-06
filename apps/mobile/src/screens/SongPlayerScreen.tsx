@@ -144,6 +144,10 @@ function SongPlayerScreenComponent({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Convert to seconds for slider
+  const durationSec = (duration || 1) / 1000;
+  const positionSec = position / 1000;
+
   const progress = duration > 0 ? position / duration : 0;
 
   if (showShare) {
@@ -299,12 +303,13 @@ function SongPlayerScreenComponent({
                 <Slider
                   style={styles.slider}
                   minimumValue={0}
-                  maximumValue={Math.max(1, duration)}
-                  value={position}
-                  onSlidingComplete={(val) => seekSec(val / 1000)}
+                  maximumValue={durationSec}
+                  value={positionSec}
+                  onSlidingComplete={(sec) => seekSec(sec)}
                   minimumTrackTintColor="#ffffff"
                   maximumTrackTintColor="rgba(255,255,255,0.3)"
                   thumbTintColor="#ffffff"
+                  step={0.1}
                 />
               </View>
 

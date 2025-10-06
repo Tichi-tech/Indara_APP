@@ -2,6 +2,7 @@ import { memo, useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -9,17 +10,46 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { BottomNav, type BottomNavProps } from '@/components/BottomNav';
 import { useNotifications, type Notification } from '@/hooks/useNotifications';
 
-const ICONS: Record<string, { name: keyof typeof Feather.glyphMap; color: string; background: string }> = {
-  like: { name: 'heart', color: '#ef4444', background: '#fee2e2' },
-  comment: { name: 'message-circle', color: '#6366f1', background: '#e0e7ff' },
-  dm: { name: 'message-circle', color: '#8b5cf6', background: '#ede9fe' },
-  follow: { name: 'user-plus', color: '#10b981', background: '#d1fae5' },
-  track_featured: { name: 'star', color: '#f59e0b', background: '#fef3c7' },
-  system: { name: 'bell', color: '#6b7280', background: '#e5e7eb' },
+const ICON_CONFIG: Record<string, {
+  name: keyof typeof Feather.glyphMap;
+  color: string;
+  gradientColors: [string, string];
+}> = {
+  like: {
+    name: 'heart',
+    color: '#ef4444',
+    gradientColors: ['#ef4444', '#ec4899']
+  },
+  comment: {
+    name: 'message-circle',
+    color: '#3b82f6',
+    gradientColors: ['#3b82f6', '#8b5cf6']
+  },
+  dm: {
+    name: 'message-circle',
+    color: '#8b5cf6',
+    gradientColors: ['#3b82f6', '#8b5cf6']
+  },
+  follow: {
+    name: 'user-plus',
+    color: '#10b981',
+    gradientColors: ['#10b981', '#14b8a6']
+  },
+  track_featured: {
+    name: 'star',
+    color: '#f59e0b',
+    gradientColors: ['#f59e0b', '#f97316']
+  },
+  system: {
+    name: 'bell',
+    color: '#6b7280',
+    gradientColors: ['#6b7280', '#4b5563']
+  },
 };
 
 const formatTimeAgo = (timestamp: string) => {
@@ -58,6 +88,8 @@ function NotificationsScreenComponent({
 
   const mergedNav = useMemo<BottomNavProps | null>(() => {
     if (bottomNavProps) return bottomNavProps;
+    // Only create nav if any navigation callback is provided
+    if (!onHome && !onLibrary && !onCreate && !onInbox && !onAccount) return null;
     return {
       active: 'inbox',
       onHome,
@@ -79,6 +111,26 @@ function NotificationsScreenComponent({
       if (!notification.is_read) {
         await markAsRead(notification.id);
       }
+
+      // Handle navigation based on notification type
+      switch (notification.type) {
+        case 'like':
+        case 'track_featured':
+          if (notification.data?.track_id) {
+            console.log('Navigate to track:', notification.data.track_id);
+          }
+          break;
+        case 'follow':
+          if (notification.data?.follower_id) {
+            console.log('Navigate to user profile:', notification.data.follower_id);
+          }
+          break;
+        case 'dm':
+          if (notification.data?.sender_id) {
+            console.log('Navigate to DM with:', notification.data.sender_id);
+          }
+          break;
+      }
     },
     [markAsRead]
   );
@@ -91,32 +143,69 @@ function NotificationsScreenComponent({
   );
 
   const renderItem = ({ item }: { item: Notification }) => {
-    const palette = ICONS[item.type] ?? ICONS.system;
+    const config = ICON_CONFIG[item.type] ?? ICON_CONFIG.system;
+    const hasAvatar = item.sender?.avatar_url;
+
     return (
       <Pressable
         onPress={() => handlePress(item)}
         style={[styles.card, !item.is_read && styles.cardUnread]}
         accessibilityRole="button"
       >
-        <View style={styles.iconWrap}>
-          <View style={[styles.iconBubble, { backgroundColor: palette.background }]}> 
-            <Feather name={palette.name} size={18} color={palette.color} />
+        {/* Avatar or Icon */}
+        <View style={styles.avatarContainer}>
+          {hasAvatar ? (
+            <Image
+              source={{ uri: item.sender.avatar_url }}
+              style={styles.avatar}
+            />
+          ) : (
+            <LinearGradient
+              colors={config.gradientColors}
+              style={styles.avatarGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Feather name={config.name} size={20} color="#ffffff" />
+            </LinearGradient>
+          )}
+
+          {/* Type Icon Overlay */}
+          <View style={styles.iconOverlay}>
+            <Feather name={config.name} size={12} color={config.color} />
           </View>
         </View>
+
+        {/* Content */}
         <View style={styles.cardBody}>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardMessage} numberOfLines={2}>
-            {item.message}
-          </Text>
-          <Text style={styles.cardMeta}>{formatTimeAgo(item.created_at)}</Text>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardTextContainer}>
+              <Text style={[styles.cardTitle, !item.is_read && styles.cardTitleUnread]}>
+                {item.title}
+              </Text>
+              <Text style={styles.cardMessage} numberOfLines={2}>
+                {item.message}
+              </Text>
+              <Text style={styles.cardMeta}>{formatTimeAgo(item.created_at)}</Text>
+            </View>
+
+            {/* Delete and Unread Indicator */}
+            <View style={styles.cardActions}>
+              <Pressable
+                onPress={() => handleDelete(item.id)}
+                accessibilityRole="button"
+                style={styles.deleteButton}
+                hitSlop={8}
+              >
+                <Feather name="trash-2" size={16} color="#9ca3af" />
+              </Pressable>
+
+              {!item.is_read && (
+                <View style={styles.unreadDot} />
+              )}
+            </View>
+          </View>
         </View>
-        <Pressable
-          onPress={() => handleDelete(item.id)}
-          accessibilityRole="button"
-          style={styles.deleteButton}
-        >
-          <Feather name="trash-2" size={16} color="#94a3b8" />
-        </Pressable>
       </Pressable>
     );
   };
@@ -124,47 +213,61 @@ function NotificationsScreenComponent({
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
+        {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Pressable onPress={onInbox} style={styles.headerButton} accessibilityRole="button">
-              <Feather name="arrow-left" size={20} color="#111827" />
-            </Pressable>
-            <View>
-              <Text style={styles.headerTitle}>Notifications</Text>
-              {unreadCount > 0 ? (
-                <Text style={styles.headerSubtitle}>{unreadCount} unread</Text>
-              ) : null}
-            </View>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Notifications</Text>
+            {unreadCount > 0 ? (
+              <Text style={styles.headerSubtitle}>{unreadCount} unread</Text>
+            ) : null}
           </View>
-          {unreadCount > 0 ? (
-            <Pressable onPress={markAllAsRead} style={styles.headerButton} accessibilityRole="button">
-              <Feather name="check" size={18} color="#111827" />
-            </Pressable>
-          ) : <View style={styles.headerButton} />}
+
+          {/* Settings Button */}
+          <Pressable style={styles.headerButton} accessibilityRole="button">
+            <Feather name="settings" size={20} color="#6b7280" />
+          </Pressable>
         </View>
 
+        {/* Filter Tabs */}
         <View style={styles.filterRow}>
           <Pressable
             accessibilityRole="button"
             onPress={() => setFilter('all')}
             style={[styles.filterChip, filter === 'all' && styles.filterChipActive]}
           >
-            <Text style={[styles.filterLabel, filter === 'all' && styles.filterLabelActive]}>All</Text>
+            <Text style={[styles.filterLabel, filter === 'all' && styles.filterLabelActive]}>
+              All
+            </Text>
           </Pressable>
+
           <Pressable
             accessibilityRole="button"
             onPress={() => setFilter('unread')}
             style={[styles.filterChip, filter === 'unread' && styles.filterChipActive]}
           >
-            <Text style={[styles.filterLabel, filter === 'unread' && styles.filterLabelActive]}>Unread</Text>
+            <Text style={[styles.filterLabel, filter === 'unread' && styles.filterLabelActive]}>
+              Unread
+            </Text>
             {unreadCount > 0 ? (
               <View style={styles.badge}>
                 <Text style={styles.badgeLabel}>{unreadCount}</Text>
               </View>
             ) : null}
           </Pressable>
+
+          {/* Mark All Read - Moved here like web */}
+          {unreadCount > 0 && (
+            <Pressable
+              onPress={markAllAsRead}
+              style={styles.markAllButton}
+              accessibilityRole="button"
+            >
+              <Text style={styles.markAllText}>Mark all read</Text>
+            </Pressable>
+          )}
         </View>
 
+        {/* Notifications List */}
         {loading ? (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="small" color="#0f172a" />
@@ -177,15 +280,24 @@ function NotificationsScreenComponent({
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Feather name="bell" size={28} color="#94a3b8" />
-                <Text style={styles.emptyTitle}>You're all caught up</Text>
-                <Text style={styles.emptySubtitle}>New notifications will show up here.</Text>
+                <View style={styles.emptyIconWrap}>
+                  <Feather name="bell" size={32} color="#9ca3af" />
+                </View>
+                <Text style={styles.emptyTitle}>
+                  {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
+                </Text>
+                <Text style={styles.emptySubtitle}>
+                  {filter === 'unread'
+                    ? 'All caught up! Check back later for new updates.'
+                    : 'When you receive notifications, they\'ll appear here.'
+                  }
+                </Text>
               </View>
             }
           />
         )}
 
-        {mergedNav ? <BottomNav {...mergedNav} /> : null}
+        {mergedNav ? <BottomNav {...mergedNav} badgeCount={unreadCount} /> : null}
       </View>
     </SafeAreaView>
   );
@@ -201,54 +313,59 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  headerContent: {
+    flex: 1,
   },
   headerButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000000',
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#6b7280',
+    marginTop: 2,
   },
   filterRow: {
     flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 20,
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 18,
-    backgroundColor: '#e5e7eb',
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#f3f4f6',
   },
   filterChipActive: {
-    backgroundColor: '#111827',
+    backgroundColor: '#000000',
   },
   filterLabel: {
-    fontSize: 13,
-    color: '#111827',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6b7280',
   },
   filterLabelActive: {
     color: '#ffffff',
@@ -268,56 +385,100 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  markAllButton: {
+    marginLeft: 'auto',
+    paddingHorizontal: 8,
+  },
+  markAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3b82f6',
+  },
   loadingWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   listContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 220,
-    gap: 12,
+    paddingTop: 4,
+    paddingBottom: 120,
   },
   card: {
     flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 20,
-    backgroundColor: '#f9fafb',
-    padding: 16,
+    alignItems: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
   cardUnread: {
-    borderWidth: 1,
-    borderColor: '#111827',
+    backgroundColor: '#eff6ff',
   },
-  iconWrap: {
-    width: 40,
-    alignItems: 'center',
+  avatarContainer: {
+    position: 'relative',
+    width: 48,
+    height: 48,
   },
-  iconBubble: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  avatarGradient: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconOverlay: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+  },
   cardBody: {
     flex: 1,
-    gap: 4,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  cardTextContainer: {
+    flex: 1,
   },
   cardTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
     color: '#111827',
   },
+  cardTitleUnread: {
+    fontWeight: '600',
+    color: '#000000',
+  },
   cardMessage: {
-    fontSize: 13,
-    color: '#475569',
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 4,
+    lineHeight: 20,
   },
   cardMeta: {
-    fontSize: 11,
-    color: '#94a3b8',
+    fontSize: 12,
+    color: '#9ca3af',
+    marginTop: 8,
+  },
+  cardActions: {
+    alignItems: 'center',
+    gap: 12,
   },
   deleteButton: {
     width: 32,
@@ -326,20 +487,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#3b82f6',
+  },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 80,
-    gap: 12,
+    paddingVertical: 120,
+    paddingHorizontal: 32,
+    gap: 16,
+  },
+  emptyIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#0f172a',
+    color: '#111827',
   },
   emptySubtitle: {
-    fontSize: 13,
-    color: '#64748b',
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 
