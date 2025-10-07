@@ -40,7 +40,7 @@ export const musicApi = {
         title: track.title || 'Untitled',
         description: track.prompt || track.admin_notes || '',
         tags: track.style || '',
-        duration: track.duration || '3:45',
+        duration: track.duration,
         audio_url: track.audio_url ?? undefined,
         createdAt: track.created_at,
         creator: track.display_name || 'Community Artist',
@@ -623,5 +623,152 @@ export const musicApi = {
       console.error('Failed to unpublish track', error);
       return { data: null, error } as const;
     }
+  },
+
+  // Comment methods
+  async getCommentCount(trackId: string) {
+    try {
+      const { count, error } = await supabase
+        .from('track_comments')
+        .select('*', { count: 'exact', head: true })
+        .eq('track_id', trackId);
+
+      if (error) throw error;
+
+      return { data: count || 0, error: null } as const;
+    } catch (error) {
+      console.error('Failed to fetch comment count', error);
+      return { data: 0, error } as const;
+    }
+  },
+
+  async getComments(trackId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('track_comments')
+        .select('id, track_id, user_id, comment, created_at, updated_at')
+        .eq('track_id', trackId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch display names separately
+      const userIds = [...new Set((data || []).map((c: any) => c.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', userIds);
+
+      const profileMap = new Map(
+        (profiles || []).map((p: any) => [p.id, p.display_name || 'User'])
+      );
+
+      const comments = (data || []).map((c: any) => ({
+        id: c.id,
+        trackId: c.track_id,
+        userId: c.user_id,
+        comment: c.comment,
+        createdAt: c.created_at,
+        updatedAt: c.updated_at,
+        displayName: profileMap.get(c.user_id) || 'User',
+      }));
+
+      return { data: comments, error: null } as const;
+    } catch (error) {
+      console.error('Failed to fetch comments', error);
+      return { data: [], error } as const;
+    }
+  },
+
+  async addComment(trackId: string, userId: string, comment: string) {
+    try {
+      const { data, error } = await supabase
+        .from('track_comments')
+        .insert({
+          track_id: trackId,
+          user_id: userId,
+          comment: comment.trim(),
+        })
+        .select('id, track_id, user_id, comment, created_at, updated_at')
+        .single();
+
+      if (error) throw error;
+
+      // Fetch display name separately
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', userId)
+        .single();
+
+      return {
+        data: {
+          id: data.id,
+          trackId: data.track_id,
+          userId: data.user_id,
+          comment: data.comment,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+          displayName: profile?.display_name || 'User',
+        },
+        error: null,
+      } as const;
+    } catch (error) {
+      console.error('Failed to add comment', error);
+      return { data: null, error } as const;
+    }
+  },
+
+  async deleteComment(commentId: string, userId: string) {
+    try {
+      const { error } = await supabase
+        .from('track_comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      return { error: null } as const;
+    } catch (error) {
+      console.error('Failed to delete comment', error);
+      return { error } as const;
+    }
+  },
+
+  subscribeToComments(trackId: string, callback: (comment: any) => void) {
+    const channel = supabase
+      .channel(`comments:${trackId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'track_comments',
+          filter: `track_id=eq.${trackId}`,
+        },
+        async (payload) => {
+          // Fetch the display name for the new comment
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', payload.new.user_id)
+            .single();
+
+          callback({
+            id: payload.new.id,
+            trackId: payload.new.track_id,
+            userId: payload.new.user_id,
+            comment: payload.new.comment,
+            createdAt: payload.new.created_at,
+            updatedAt: payload.new.updated_at,
+            displayName: profile?.display_name || 'User',
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
 };

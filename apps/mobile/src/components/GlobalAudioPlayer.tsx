@@ -15,7 +15,6 @@ function GlobalAudioPlayerComponent({ onPress }: GlobalAudioPlayerProps) {
     queue,
     toggle,
     next,
-    prev,
   } = usePlayer();
 
   if (!current) return null;
@@ -46,12 +45,6 @@ function GlobalAudioPlayerComponent({ onPress }: GlobalAudioPlayerProps) {
       </Pressable>
 
       <View style={styles.controls}>
-        {queueLength > 1 ? (
-          <Pressable onPress={prev} style={styles.controlButton} accessibilityRole="button">
-            <Feather name="skip-back" size={18} color="#4b5563" />
-          </Pressable>
-        ) : null}
-
         <Pressable onPress={toggle} style={styles.playPauseButton} accessibilityRole="button">
           <Feather
             name={isPlaying ? 'pause' : 'play'}
@@ -61,11 +54,9 @@ function GlobalAudioPlayerComponent({ onPress }: GlobalAudioPlayerProps) {
           />
         </Pressable>
 
-        {queueLength > 1 ? (
-          <Pressable onPress={next} style={styles.controlButton} accessibilityRole="button">
-            <Feather name="skip-forward" size={18} color="#4b5563" />
-          </Pressable>
-        ) : null}
+        <Pressable onPress={next} style={styles.controlButton} accessibilityRole="button">
+          <Feather name="skip-forward" size={18} color="#4b5563" />
+        </Pressable>
       </View>
     </View>
   );

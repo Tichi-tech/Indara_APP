@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
@@ -17,6 +17,7 @@ import type { Track } from '@/types/music';
 import { getSmartThumbnail } from '@/utils/thumbnailMatcher';
 import { useAuth } from '@/hooks/useAuth';
 import { ShareSongScreen } from '@/screens/ShareSongScreen';
+import { CommentModal } from '@/components/CommentModal';
 
 export type PlayerSong = {
   id: string;
@@ -51,9 +52,8 @@ function SongPlayerScreenComponent({
   const [isLiked, setIsLiked] = useState(false);
   const [loadingLike, setLoadingLike] = useState(false);
   const [showShare, setShowShare] = useState(false);
-  const [isDisliked, setIsDisliked] = useState(false);
-  const [dislikeCount, setDislikeCount] = useState(42);
-  const [commentCount, setCommentCount] = useState(156);
+  const [showComments, setShowComments] = useState(false);
+  const [commentCount, setCommentCount] = useState(0);
 
   const coverImage = useMemo(() => {
     if (song.image_url) return song.image_url;
@@ -94,6 +94,12 @@ function SongPlayerScreenComponent({
     void fetchStats();
   }, [song.id, user?.id]);
 
+  // Fetch comment count only when modal is opened or after closing
+  const updateCommentCount = useCallback(async () => {
+    const { data: count } = await musicApi.getCommentCount(song.id);
+    setCommentCount(count);
+  }, [song.id]);
+
   const handleTogglePlay = async () => {
     await toggle();
   };
@@ -110,31 +116,17 @@ function SongPlayerScreenComponent({
       if (error || !data) return;
       setIsLiked(data.liked);
       setLikeCount((prev) => Math.max(0, prev + (data.liked ? 1 : -1)));
-
-      // If user likes, remove dislike
-      if (data.liked && isDisliked) {
-        setIsDisliked(false);
-        setDislikeCount((prev) => prev - 1);
-      }
     } finally {
       setLoadingLike(false);
     }
   };
 
-  const handleDislike = () => {
-    setIsDisliked((prev) => !prev);
-    setDislikeCount((prev) => (isDisliked ? prev - 1 : prev + 1));
-
-    // If user dislikes, remove like
-    if (!isDisliked && isLiked) {
-      setIsLiked(false);
-      setLikeCount((prev) => Math.max(0, prev - 1));
+  const handleComment = async () => {
+    setShowComments(true);
+    // Load comment count in background when opening
+    if (commentCount === 0) {
+      await updateCommentCount();
     }
-  };
-
-  const handleComment = () => {
-    console.log('Opening comments...');
-    // TODO: Implement comment functionality
   };
 
   const formatTime = (ms: number) => {
@@ -174,6 +166,7 @@ function SongPlayerScreenComponent({
       />
     );
   }
+
 
   return (
     <View style={styles.container}>
@@ -237,21 +230,6 @@ function SongPlayerScreenComponent({
               )}
             </Pressable>
 
-            {/* Dislike Button */}
-            <Pressable
-              onPress={handleDislike}
-              style={styles.actionButton}
-              accessibilityRole="button"
-            >
-              <Feather
-                name="thumbs-down"
-                size={24}
-                color="#ffffff"
-                style={isDisliked ? styles.iconFilled : undefined}
-              />
-              <Text style={styles.actionButtonText}>{dislikeCount}</Text>
-            </Pressable>
-
             {/* Comment Button */}
             <Pressable
               onPress={handleComment}
@@ -268,7 +246,8 @@ function SongPlayerScreenComponent({
               style={styles.actionButton}
               accessibilityRole="button"
             >
-              <Feather name="share-2" size={24} color="#ffffff" />
+              <Feather name="share-2" size={20} color="#ffffff" />
+              <Text style={styles.actionButtonText}>PUBLISH</Text>
             </Pressable>
           </View>
 
@@ -313,11 +292,22 @@ function SongPlayerScreenComponent({
                 />
               </View>
 
-              <Text style={styles.timeText}>{formatTime(position)}</Text>
+              <Text style={styles.timeText}>{formatTime(position)} / {formatTime(duration)}</Text>
             </View>
           </View>
         </SafeAreaView>
       </ImageBackground>
+
+      {/* Comment Modal */}
+      <CommentModal
+        visible={showComments}
+        trackId={song.id}
+        onClose={() => {
+          setShowComments(false);
+          // Refresh comment count when closing
+          void updateCommentCount();
+        }}
+      />
     </View>
   );
 }
@@ -399,7 +389,7 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
     marginTop: 4,
   },

@@ -89,10 +89,19 @@ function HealingCommunitySectionComponent({ tracks: propTracks, stats: propStats
         return;
       }
 
+      // Convert all tracks to player queue
+      const queue: Track[] = tracks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        artist: t.creator ?? 'Community Artist',
+        audio_url: t.audio_url || '',
+        image_url: t.image || getSmartThumbnail(t.title, t.description, t.tags) || fallbackImage,
+      }));
+
       await musicApi.recordPlay(user?.id ?? null, track.id);
-      await loadAndPlay(playerTrack, [playerTrack]);
+      await loadAndPlay(playerTrack, queue);
     },
-    [current?.id, loadAndPlay, toggle, user?.id]
+    [current?.id, loadAndPlay, toggle, user?.id, tracks]
   );
 
   // Memoize track IDs to prevent unnecessary subscription re-initialization
@@ -191,82 +200,58 @@ type TrackCardProps = {
 
 const TrackCard = memo(({ track, isActive, stats, onPlay, isLast }: TrackCardProps) => {
   const imageUri = track.image || getSmartThumbnail(track.title, track.description, track.tags) || fallbackImage;
-
-  // Parse duration - handle range format like "3-4" from database
-  const formatDuration = (duration?: string) => {
-    if (!duration) return '3:45';
-
-    // Handle range format like "3-4" (minutes range)
-    if (duration.includes('-')) {
-      const [min, max] = duration.split('-').map(Number);
-      if (!isNaN(min) && !isNaN(max)) {
-        const avgMinutes = Math.floor((min + max) / 2);
-        return `${avgMinutes}:30`;
-      }
-    }
-
-    // Already in MM:SS format, return as-is
-    if (duration.includes(':')) {
-      return duration;
-    }
-
-    // Just return the value
-    return duration;
-  };
-
-  const durationLabel = formatDuration(track.duration);
   const player = usePlayer();
   const playing = player.current?.id === track.id && player.isPlaying;
 
   return (
     <View style={[styles.trackCardWrap, isLast && styles.trackCardWrapLast]}>
-      <Card style={styles.trackCard}>
-        <ImageBackground
-          source={{ uri: imageUri }}
-          style={styles.trackImage}
-          imageStyle={styles.trackImageInner}
-        >
-          <View style={styles.trackImageOverlay} />
-          <View style={styles.trackImageHeader}>
-            <View style={styles.durationPill}>
-              <Caption style={styles.durationText}>{durationLabel}</Caption>
+      <Pressable onPress={onPlay} accessibilityRole="button">
+        <Card style={styles.trackCard}>
+          <ImageBackground
+            source={{ uri: imageUri }}
+            style={styles.trackImage}
+            imageStyle={styles.trackImageInner}
+          >
+            <View style={styles.trackImageOverlay} />
+            <View style={styles.trackImageHeader}>
+              <View style={styles.spacer} />
+              <View style={styles.playButton}>
+                <Feather
+                  name={playing ? 'pause' : 'play'}
+                  size={18}
+                  color="#ffffff"
+                  style={!playing ? styles.playIconOffset : undefined}
+                />
+              </View>
             </View>
-            <Pressable onPress={onPlay} style={styles.playButton}>
-              <Feather
-                name={playing ? 'pause' : 'play'}
-                size={18}
-                color="#ffffff"
-                style={!playing ? styles.playIconOffset : undefined}
-              />
-            </Pressable>
-          </View>
-        </ImageBackground>
+          </ImageBackground>
 
-        <View style={styles.trackInfoCard}>
-          <P style={[styles.trackTitle, isActive && styles.trackTitleActive]} numberOfLines={1}>
-            {track.title}
-          </P>
-          <Caption style={styles.trackDescription} numberOfLines={2}>
-            {track.description}
-          </Caption>
-
-          <View style={styles.trackFooter}>
-            <Caption style={styles.trackCreator} numberOfLines={1}>
-              @{track.creator || 'indara'}
+          <View style={styles.trackInfoCard}>
+            <P style={[styles.trackTitle, isActive && styles.trackTitleActive]} numberOfLines={1}>
+              {track.title}
+            </P>
+            <Caption style={styles.trackDescription} numberOfLines={2}>
+              {track.description}
             </Caption>
-            <View style={styles.trackStats}>
-              <View style={[styles.statItem, styles.statItemFirst]}>
-                <Feather name="headphones" size={11} color="#6b7280" />
-                <Caption>{stats?.plays ?? 0}</Caption>
-              </View>
-              <View style={styles.statItem}>
-                <Feather name="heart" size={11} color="#6b7280" />
-                <Caption>{stats?.likes ?? 0}</Caption>
+
+            <View style={styles.trackFooter}>
+              <Caption style={styles.trackCreator} numberOfLines={1}>
+                @{track.creator || 'indara'}
+              </Caption>
+              <View style={styles.trackStats}>
+                <View style={[styles.statItem, styles.statItemFirst]}>
+                  <Feather name="headphones" size={11} color="#6b7280" />
+                  <Caption>{stats?.plays ?? 0}</Caption>
+                </View>
+                <View style={styles.statItem}>
+                  <Feather name="heart" size={11} color="#6b7280" />
+                  <Caption>{stats?.likes ?? 0}</Caption>
+                </View>
               </View>
             </View>
           </View>
-        </View>
-      </Card>
+        </Card>
+      </Pressable>
     </View>
   );
 });
@@ -358,17 +343,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 12,
   },
-  durationPill: {
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+  spacer: {
+    flex: 1,
   },
-  durationText: {
-    color: '#ffffff',
-    fontSize: 11,
-  },
- playButton: {
+  playButton: {
     width: 40,
     height: 40,
     borderRadius: 20,

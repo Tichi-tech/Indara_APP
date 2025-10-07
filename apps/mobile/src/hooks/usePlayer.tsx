@@ -34,10 +34,26 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [duration, setDuration] = useState(0);
   const idxRef = useRef(0);
   const [isMiniPlayerVisible, setMiniPlayerVisible] = useState(true);
+  const hasAutoAdvancedRef = useRef(false);
 
   useEffect(() => {
     audioService.init();
+
+    // Cleanup on unmount
+    return () => {
+      audioService.unload();
+    };
   }, []);
+
+  const next = async () => {
+    if (!queue.length) return;
+    idxRef.current = (idxRef.current + 1) % queue.length;
+    const t = queue[idxRef.current];
+    setCurrent(t);
+    if (t.audio_url) {
+      await audioService.load(t.audio_url, true);
+    }
+  };
 
   useEffect(() => {
     const off = audioService.subscribe((s) => {
@@ -45,9 +61,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setPosition(s.positionMs);
       setDuration(s.durationMs);
 
-      // Auto-advance to next track when current finishes
-      if (s.durationMs > 0 && s.positionMs >= s.durationMs - 100) {
-        next();
+      // Auto-advance to next track when current finishes (only if playing)
+      if (s.isPlaying && s.durationMs > 0 && s.positionMs >= s.durationMs - 100) {
+        if (!hasAutoAdvancedRef.current) {
+          hasAutoAdvancedRef.current = true;
+          next();
+        }
+      } else if (s.positionMs < s.durationMs - 1000) {
+        // Reset flag when track is not near the end
+        hasAutoAdvancedRef.current = false;
       }
     });
     return off;
@@ -76,16 +98,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const seekSec = async (sec: number) => {
     await audioService.seek(Math.max(0, Math.floor(sec * 1000)));
-  };
-
-  const next = async () => {
-    if (!queue.length) return;
-    idxRef.current = (idxRef.current + 1) % queue.length;
-    const t = queue[idxRef.current];
-    setCurrent(t);
-    if (t.audio_url) {
-      await audioService.load(t.audio_url, true);
-    }
   };
 
   const prev = async () => {

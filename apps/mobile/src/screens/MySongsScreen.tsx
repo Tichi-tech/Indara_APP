@@ -93,13 +93,12 @@ function MySongsScreenComponent({
         );
 
         const imageUrl = resolveImage(item.thumbnail_url) ?? fallbackImage;
-        const duration = item.duration ?? '3:00';
 
         return {
           id: item.id,
           title: item.title ?? 'Untitled',
           description: item.prompt ?? item.admin_notes ?? '',
-          durationLabel: duration,
+          durationLabel: item.duration ?? '3:00',
           audioUrl: item.audio_url ?? undefined,
           imageUrl,
           plays: item.play_count ?? 0,
@@ -177,8 +176,6 @@ function MySongsScreenComponent({
     setRefreshing(false);
   }, [loadTracks]);
 
-  const formatDuration = (label: string) => label || '—';
-
   const handlePlay = useCallback(
     async (track: LibraryTrack) => {
       if (!track.audioUrl) return;
@@ -194,11 +191,20 @@ function MySongsScreenComponent({
       if (current?.id === track.id) {
         await toggle();
       } else {
+        // Convert all filtered tracks to queue
+        const queue: Track[] = filteredTracks.map((t) => ({
+          id: t.id,
+          title: t.title,
+          artist: 'You',
+          audio_url: t.audioUrl || '',
+          image_url: t.imageUrl,
+        }));
+
         await musicApi.recordPlay(user?.id ?? null, track.id);
-        await loadAndPlay(nowPlaying, [nowPlaying]);
+        await loadAndPlay(nowPlaying, queue);
       }
     },
-    [current?.id, loadAndPlay, toggle, user?.id]
+    [current?.id, loadAndPlay, toggle, user?.id, filteredTracks]
   );
 
   const handleLike = useCallback(
@@ -266,12 +272,12 @@ function MySongsScreenComponent({
     const publishDisabled = publishingId === item.id || !user;
 
     return (
-      <View style={[styles.trackCard, isCurrent && styles.trackCardActive]}>
-        <Pressable
-          onPress={() => handlePlay(item)}
-          accessibilityRole="button"
-          style={styles.coverWrap}
-        >
+      <Pressable
+        onPress={() => handlePlay(item)}
+        accessibilityRole="button"
+        style={[styles.trackCard, isCurrent && styles.trackCardActive]}
+      >
+        <View style={styles.coverWrap}>
           <Image source={{ uri: item.imageUrl }} style={styles.cover} />
           <View style={styles.coverOverlay}>
             <Feather
@@ -281,7 +287,7 @@ function MySongsScreenComponent({
               style={!playing ? styles.playIconOffset : undefined}
             />
           </View>
-        </Pressable>
+        </View>
 
         <View style={styles.trackBody}>
           <Text style={styles.trackTitle} numberOfLines={1}>
@@ -292,10 +298,6 @@ function MySongsScreenComponent({
           </Text>
 
           <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <Feather name="clock" size={12} color="#64748b" />
-              <Text style={styles.metaText}>{formatDuration(item.durationLabel)}</Text>
-            </View>
             <View style={styles.metaItem}>
               <Feather name="headphones" size={12} color="#64748b" />
               <Text style={styles.metaText}>{item.plays}</Text>
@@ -308,7 +310,10 @@ function MySongsScreenComponent({
 
           <View style={styles.actionsRow}>
             <Pressable
-              onPress={() => handlePublishToggle(item)}
+              onPress={(e) => {
+                e.stopPropagation();
+                handlePublishToggle(item);
+              }}
               style={styles.actionButton}
               accessibilityRole="button"
               disabled={publishDisabled}
@@ -324,7 +329,10 @@ function MySongsScreenComponent({
             </Pressable>
 
             <Pressable
-              onPress={() => handleLike(item)}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleLike(item);
+              }}
               style={styles.actionButton}
               accessibilityRole="button"
               disabled={likeDisabled}
@@ -340,7 +348,7 @@ function MySongsScreenComponent({
             </Pressable>
           </View>
         </View>
-      </View>
+      </Pressable>
     );
   };
 
@@ -370,15 +378,14 @@ function MySongsScreenComponent({
 
       <Text style={styles.sectionTitle}>Liked</Text>
       {likedTracks.length ? (
-        likedTracks.slice(0, 3).map((track) => (
-          <View key={track.id} style={styles.likedCard}>
-            <Image source={{ uri: track.imageUrl }} style={styles.likedCover} />
-            <View style={styles.likedBody}>
-              <Text style={styles.likedTitle} numberOfLines={1}>{track.title}</Text>
-              <Text style={styles.likedMeta}>{track.durationLabel}</Text>
+        <View style={styles.likedGrid}>
+          {likedTracks.slice(0, 6).map((track) => (
+            <View key={track.id} style={styles.likedGridItem}>
+              <Image source={{ uri: track.imageUrl }} style={styles.likedGridCover} />
+              <Text style={styles.likedGridTitle} numberOfLines={1}>{track.title}</Text>
             </View>
-          </View>
-        ))
+          ))}
+        </View>
       ) : (
         <View style={styles.likedEmpty}>
           <Feather name="heart" size={20} color="#cbd5f5" />
@@ -486,30 +493,30 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   newPlaylistCard: {
-    width: 96,
-    height: 120,
-    borderRadius: 24,
+    width: 80,
+    height: 100,
+    borderRadius: 16,
     borderStyle: 'dashed',
     borderWidth: 1,
     borderColor: '#cbd5f5',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 8,
     backgroundColor: '#f8fafc',
   },
   playlistLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#64748b',
   },
   playlistCard: {
-    width: 96,
+    width: 80,
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   playlistCover: {
-    width: 96,
-    height: 96,
-    borderRadius: 24,
+    width: 80,
+    height: 80,
+    borderRadius: 16,
   },
   playlistName: {
     fontSize: 13,
@@ -525,31 +532,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#e5e7eb',
     marginVertical: 4,
   },
-  likedCard: {
+  likedGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 12,
-    backgroundColor: '#f8fafc',
-    padding: 12,
-    borderRadius: 18,
   },
-  likedCover: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+  likedGridItem: {
+    width: '31%',
+    alignItems: 'center',
+    gap: 6,
   },
-  likedBody: {
-    flex: 1,
-    gap: 2,
+  likedGridCover: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 16,
   },
-  likedTitle: {
-    fontSize: 14,
+  likedGridTitle: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#0f172a',
-  },
-  likedMeta: {
-    fontSize: 12,
-    color: '#94a3b8',
+    textAlign: 'center',
   },
   likedEmpty: {
     alignItems: 'center',
@@ -585,24 +587,24 @@ const styles = StyleSheet.create({
   },
   trackCard: {
     flexDirection: 'row',
-    borderRadius: 24,
+    borderRadius: 16,
     backgroundColor: '#ffffff',
-    padding: 16,
-    gap: 16,
-    marginBottom: 16,
+    padding: 12,
+    gap: 12,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOpacity: 0.05,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   },
   trackCardActive: {
     borderWidth: 1,
     borderColor: '#0f766e',
   },
   coverWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   cover: {
@@ -625,15 +627,15 @@ const styles = StyleSheet.create({
   },
   trackBody: {
     flex: 1,
-    gap: 8,
+    gap: 4,
   },
   trackTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#0f172a',
   },
   trackSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#475569',
   },
   metaRow: {
