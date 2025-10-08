@@ -1,209 +1,136 @@
-import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
-import * as FileSystem from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
+import TrackPlayer, { State, RepeatMode, Track as RNTPTrack } from 'react-native-track-player';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setupPlayer } from '../player/service';
 
-type PlaybackStatus = {
-  isPlaying: boolean;
-  positionMs: number;
-  durationMs: number;
-};
+// ✅ Singleton setup promise (prevents race conditions)
+let _setupPromise: Promise<void> | null = null;
 
-type Listener = (status: PlaybackStatus) => void;
+async function ensureReady() {
+  if (_setupPromise) return _setupPromise;
 
-/**
- * Indara's singleton audio service using expo-audio (modern API).
- * Downloads files to local cache for smooth, buffer-free playback.
- */
-class AudioService {
-  private player: ReturnType<typeof createAudioPlayer> | null = null;
-  private listeners = new Set<Listener>();
-  private statusInterval: NodeJS.Timeout | null = null;
-  private currentUrl: string | null = null;
-  private downloadedFiles = new Map<string, string>(); // url -> local file path
-
-  async init() {
-    try {
-      // Configure audio mode for high-quality playback
-      await setAudioModeAsync({
-        playsInSilentMode: true,
-        interruptionMode: 'doNotMix',
-        interruptionModeAndroid: 'doNotMix',
-        allowsRecording: false,
-        shouldPlayInBackground: true,
-        shouldRouteThroughEarpiece: false,
-      });
-      console.log('🎵 Audio service initialized with expo-audio');
-    } catch (err) {
-      console.warn('🎵 Audio mode init failed:', err);
+  _setupPromise = (async () => {
+    if (Platform.OS === 'web') {
+      throw new Error('RNTP not supported on web');
     }
-  }
+    await setupPlayer();
+  })().catch((err) => {
+    _setupPromise = null; // Allow retry on failure
+    throw err;
+  });
 
-  subscribe(fn: Listener) {
-    this.listeners.add(fn);
-    return () => {
-      this.listeners.delete(fn);
-    };
-  }
+  return _setupPromise;
+}
 
-  private notifyListeners() {
-    if (!this.player) return;
-
-    const status: PlaybackStatus = {
-      isPlaying: this.player.playing ?? false,
-      positionMs: (this.player.currentTime ?? 0) * 1000,
-      durationMs: (this.player.duration ?? 0) * 1000,
-    };
-
-    this.listeners.forEach((fn) => fn(status));
-  }
-
-  private startStatusPolling() {
-    this.stopStatusPolling();
-    this.statusInterval = setInterval(() => {
-      this.notifyListeners();
-    }, 100);
-  }
-
-  private stopStatusPolling() {
-    if (this.statusInterval) {
-      clearInterval(this.statusInterval);
-      this.statusInterval = null;
-    }
-  }
-
-  /**
-   * Download audio file to local cache for smooth playback
-   */
-  private async downloadAudio(url: string): Promise<string> {
-    // Check if already downloaded
-    if (this.downloadedFiles.has(url)) {
-      const localPath = this.downloadedFiles.get(url)!;
-      const fileInfo = await FileSystem.getInfoAsync(localPath);
-      if (fileInfo.exists) {
-        console.log('🎵 Using cached file');
-        return localPath;
-      }
-    }
-
-    // Extract filename from URL or generate one
-    const filename = url.split('/').pop() || `audio_${Date.now()}.mp3`;
-    const localPath = `${FileSystem.cacheDirectory}${filename}`;
-
-    console.log('🎵 Downloading audio file...');
-    try {
-      const downloadResult = await FileSystem.downloadAsync(url, localPath);
-      console.log('🎵 Download complete:', downloadResult.uri);
-
-      this.downloadedFiles.set(url, downloadResult.uri);
-      return downloadResult.uri;
-    } catch (err) {
-      console.warn('🎵 Download failed, falling back to streaming:', err);
-      return url; // Fallback to streaming if download fails
-    }
-  }
-
-  async load(url: string, shouldPlay = false) {
-    await this.unload();
-
-    try {
-      // Stream directly like Spotify - much faster!
-      // Note: expo-audio has decoder initialization noise regardless of streaming vs local
-      console.log('🎵 Loading audio...');
-
-      // Create player with streaming URL for instant playback
-      this.player = createAudioPlayer(url);
-      this.currentUrl = url;
-
-      this.startStatusPolling();
-
-      if (shouldPlay) {
-        await this.play();
-      }
-
-      console.log('🎵 Audio ready');
-    } catch (err) {
-      console.warn('🎵 Load failed:', err);
-      throw err;
-    }
-  }
-
-  async play() {
-    if (!this.player) {
-      console.warn('🎵 Play called but no player loaded');
-      return;
-    }
-    try {
-      this.player.play();
-      this.notifyListeners();
-      console.log('🎵 Playback started');
-    } catch (err) {
-      console.warn('🎵 Play failed:', err);
-    }
-  }
-
-  async pause() {
-    if (!this.player) {
-      console.warn('🎵 Pause called but no player loaded');
-      return;
-    }
-    try {
-      this.player.pause();
-      this.notifyListeners();
-      console.log('🎵 Playback paused');
-    } catch (err) {
-      console.warn('🎵 Pause failed:', err);
-    }
-  }
-
-  async seek(ms: number) {
-    if (!this.player) {
-      console.warn('🎵 Seek called but no player loaded');
-      return;
-    }
-    try {
-      const seconds = ms / 1000;
-      this.player.seekTo(seconds);
-      this.notifyListeners();
-      console.log(`🎵 Seeked to ${seconds.toFixed(1)}s`);
-    } catch (err) {
-      console.warn('🎵 Seek failed:', err);
-    }
-  }
-
-  async unload() {
-    this.stopStatusPolling();
-
-    if (this.player) {
-      try {
-        this.player.pause();
-        this.player.remove();
-      } catch (err) {
-        // Ignore cleanup errors
-      } finally {
-        this.player = null;
-        this.currentUrl = null;
-      }
-    }
-  }
-
-  /**
-   * Clear cached audio files to free up space
-   */
-  async clearCache() {
-    console.log('🎵 Clearing audio cache...');
-    let cleared = 0;
-
-    for (const [url, localPath] of this.downloadedFiles.entries()) {
-      try {
-        await FileSystem.deleteAsync(localPath, { idempotent: true });
-        this.downloadedFiles.delete(url);
-        cleared++;
-      } catch (err) {
-        console.warn('Failed to delete cached file:', err);
-      }
-    }
-
-    console.log(`🎵 Cleared ${cleared} cached audio files`);
+// ✅ Request Android 13+ notification permission
+export async function ensureNotificationPermission() {
+  if (Platform.OS === 'android' && Platform.Version >= 33) {
+    const { PermissionsAndroid } = require('react-native');
+    const result = await PermissionsAndroid.request(
+      'android.permission.POST_NOTIFICATIONS' as any
+    );
+    console.log('🔔 Notification permission:', result);
   }
 }
 
-export const audioService = new AudioService();
+// Track type for your app
+export type Track = {
+  id: string;
+  url: string;
+  title?: string;
+  artist?: string;
+  artwork?: string;
+  headers?: Record<string, string>;
+};
+
+// ✅ Load single track
+export async function load(track: Track, shouldPlay = false) {
+  await ensureReady();
+  await TrackPlayer.reset();
+
+  const item: RNTPTrack = {
+    id: track.id,
+    url: track.url,
+    title: track.title ?? 'Indara',
+    artist: track.artist ?? 'Indara',
+    artwork: track.artwork,
+    headers: track.headers,
+  };
+
+  await TrackPlayer.add([item]);
+  if (shouldPlay) await TrackPlayer.play();
+}
+
+// ✅ Set queue
+export async function setQueue(tracks: Track[], startIndex = 0) {
+  await ensureReady();
+  await TrackPlayer.reset();
+
+  const items: RNTPTrack[] = tracks.map((t) => ({
+    id: t.id,
+    url: t.url,
+    title: t.title ?? 'Indara',
+    artist: t.artist ?? 'Indara',
+    artwork: t.artwork,
+    headers: t.headers,
+  }));
+
+  await TrackPlayer.add(items);
+  if (startIndex > 0) {
+    await TrackPlayer.skip(startIndex);
+  }
+}
+
+// ✅ Playback controls
+export const play = () => TrackPlayer.play();
+export const pause = () => TrackPlayer.pause();
+export const stop = () => TrackPlayer.stop();
+export const seekTo = (seconds: number) => TrackPlayer.seekTo(seconds);
+export const skipToNext = () => TrackPlayer.skipToNext();
+export const skipToPrevious = () => TrackPlayer.skipToPrevious();
+export const getState = () => TrackPlayer.getPlaybackState();
+
+// ✅ Advanced features
+export const setRepeatAll = () => TrackPlayer.setRepeatMode(RepeatMode.Queue);
+export const setRepeatOff = () => TrackPlayer.setRepeatMode(RepeatMode.Off);
+export const setRepeatOne = () => TrackPlayer.setRepeatMode(RepeatMode.Track);
+export const setRate = (rate: number) => TrackPlayer.setRate(rate); // 0.5–2.0
+export const setVolume = (volume: number) => TrackPlayer.setVolume(volume); // 0.0–1.0
+
+// ✅ Persist position every 5 seconds
+let _lastSaveTime = 0;
+
+export async function saveProgress(position: number, trackId: string) {
+  const now = Date.now();
+  if (now - _lastSaveTime < 5000) return; // Throttle to every 5s
+  _lastSaveTime = now;
+
+  await AsyncStorage.multiSet([
+    ['lastTrackId', trackId],
+    ['lastPosition', String(position)],
+  ]);
+}
+
+// ✅ Restore last position on app start
+export async function restoreLastSession() {
+  try {
+    const [lastTrackId, lastPosition] = await AsyncStorage.multiGet([
+      'lastTrackId',
+      'lastPosition',
+    ]);
+
+    if (lastTrackId[1] && lastPosition[1]) {
+      const position = Number(lastPosition[1]);
+      console.log('🔄 Restoring session:', lastTrackId[1], '@', position, 's');
+
+      // Return the data for the app to load the track
+      return {
+        trackId: lastTrackId[1],
+        position,
+      };
+    }
+  } catch (err) {
+    console.error('Failed to restore session:', err);
+  }
+  return null;
+}

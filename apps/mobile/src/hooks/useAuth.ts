@@ -21,10 +21,6 @@ const REDIRECT_URI = Platform.OS === 'web'
 
 const hasAuthParams = (value: string) => value.includes('code=') || value.includes('access_token=');
 
-console.log('dY"? DEBUG: isExpoGo =', isExpoGo);
-console.log('dY"? DEBUG: Constants.appOwnership =', Constants.appOwnership);
-console.log('dY"? DEBUG: REDIRECT_URI =', REDIRECT_URI);
-
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -33,11 +29,9 @@ export function useAuth() {
 
   const processAuthRedirect = async (url: string) => {
     if (!url || !hasAuthParams(url)) {
-      console.log('dY"- Auth redirect missing code, ignoring');
       return;
     }
     if (lastHandledUrlRef.current === url) {
-      console.log('dY"- Auth redirect already processed, skipping');
       return;
     }
 
@@ -73,17 +67,15 @@ export function useAuth() {
     if (Platform.OS === 'web') return;
 
     const handleDeepLink = async ({ url }: { url: string }) => {
-      console.log('dY"- Deep link received:', url);
       try {
         await processAuthRedirect(url);
       } catch (error) {
-        console.warn('??O Deep link exchange threw', error);
+        console.warn('Deep link exchange error:', error);
       }
     };
 
     const sub = Linking.addEventListener('url', handleDeepLink);
     Linking.getInitialURL().then((url) => {
-      console.log('dY"- Initial URL:', url);
       if (url) handleDeepLink({ url });
     });
     return () => sub.remove();
@@ -104,7 +96,6 @@ export function useAuth() {
   }, []);
 
   const signInWithGoogle = async () => {
-    console.log('dY"? Starting OAuth with redirectTo:', REDIRECT_URI);
     lastHandledUrlRef.current = null;
 
     if (Platform.OS === 'web') {
@@ -130,9 +121,7 @@ export function useAuth() {
     if (error) throw error;
 
     if (data?.url) {
-      console.log('dYO? Opening browser...');
       const res = await WebBrowser.openAuthSessionAsync(data.url, REDIRECT_URI);
-      console.log('dY"? WebBrowser result:', res);
 
       if (res.type === 'success' && res.url) {
         try {
@@ -149,7 +138,6 @@ export function useAuth() {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    console.log('dY`< Signed out');
   };
 
   const signInWithPhone = async (phone: string) => {

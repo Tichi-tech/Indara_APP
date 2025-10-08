@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState, useEffect } from 'react';
 import {
   FlatList,
   Image,
@@ -6,13 +6,16 @@ import {
   StyleSheet,
   Text,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
 import { BottomNav, type BottomNavProps } from '@/components/BottomNav';
 import { usePlayer } from '@/hooks/usePlayer';
+import { useAuth } from '@/hooks/useAuth';
 import { getSmartThumbnail } from '@/utils/thumbnailMatcher';
+import { musicApi } from '@/services/musicApi';
 import type { Track } from '@/types/music';
 
 type MeditationPlaylistScreenProps = {
@@ -29,55 +32,9 @@ type MeditationTrack = {
   id: string;
   title: string;
   description: string;
-  durationLabel: string;
   audioUrl: string;
   imageUrl: string;
 };
-
-const BASE_TRACKS: Array<Omit<MeditationTrack, 'imageUrl'>> = [
-  {
-    id: 'morning-rise',
-    title: 'Morning Rise',
-    description: 'Gentle awakening mindfulness',
-    durationLabel: '5 min',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-  },
-  {
-    id: 'breath-anchor',
-    title: 'Breath Anchor',
-    description: 'Guided breathing for focus',
-    durationLabel: '4 min',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-  },
-  {
-    id: 'body-scan',
-    title: 'Body Scan Restore',
-    description: 'Progressive relaxation journey',
-    durationLabel: '7 min',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-  },
-  {
-    id: 'calm-current',
-    title: 'Calm Current',
-    description: 'Stress release visualisation',
-    durationLabel: '6 min',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
-  },
-  {
-    id: 'inner-light',
-    title: 'Inner Light',
-    description: 'Loving kindness meditation',
-    durationLabel: '8 min',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
-  },
-  {
-    id: 'deep-rest',
-    title: 'Deep Rest',
-    description: 'Sleep preparation ritual',
-    durationLabel: '10 min',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3',
-  },
-];
 
 function MeditationPlaylistScreenComponent({
   onBack,
@@ -89,6 +46,29 @@ function MeditationPlaylistScreenComponent({
   accountInitial = 'S',
 }: MeditationPlaylistScreenProps) {
   const { loadAndPlay, current, isPlaying, toggle } = usePlayer();
+  const { user } = useAuth();
+  const [tracks, setTracks] = useState<MeditationTrack[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTracks = async () => {
+      setLoading(true);
+      const { data } = await musicApi.getCommunityTracks(100, 0);
+
+      const formattedTracks: MeditationTrack[] = data.map((track) => ({
+        id: track.id,
+        title: track.title,
+        description: track.description,
+        audioUrl: track.audio_url || '',
+        imageUrl: track.image || getSmartThumbnail(track.title, track.description, track.tags),
+      }));
+
+      setTracks(formattedTracks);
+      setLoading(false);
+    };
+
+    fetchTracks();
+  }, []);
 
   const mergedBottomNav = useMemo<BottomNavProps | null>(() => {
     if (bottomNavProps) return bottomNavProps;
@@ -103,21 +83,12 @@ function MeditationPlaylistScreenComponent({
     };
   }, [accountInitial, bottomNavProps, onAccount, onBack, onCreateMusic, onInbox, onLibrary]);
 
-  const tracks: MeditationTrack[] = useMemo(
-    () =>
-      BASE_TRACKS.map((track) => ({
-        ...track,
-        imageUrl: getSmartThumbnail(track.title, track.description, 'meditation calm'),
-      })),
-    []
-  );
-
   const queue: Track[] = useMemo(
     () =>
       tracks.map((item) => ({
         id: item.id,
         title: item.title,
-        artist: 'Meditation Guide',
+        artist: 'Community',
         audio_url: item.audioUrl,
         image_url: item.imageUrl,
       })),
@@ -141,20 +112,25 @@ function MeditationPlaylistScreenComponent({
     const playing = isActive && isPlaying;
     return (
       <Pressable
-        accessibilityRole="button"
         onPress={() => handlePlay(item)}
-        style={[styles.row, isActive && styles.rowActive]}
+        accessibilityRole="button"
+        style={[styles.trackCard, isActive && styles.trackCardActive]}
       >
-        <Image source={{ uri: item.imageUrl }} style={styles.cover} />
-        <View style={styles.rowCopy}>
-          <Text style={styles.rowTitle}>{item.title}</Text>
-          <Text style={styles.rowSubtitle}>{item.description}</Text>
-          <View style={styles.rowMeta}>
-            <Feather name="clock" size={14} color="#64748b" />
-            <Text style={styles.rowMetaLabel}>{item.durationLabel}</Text>
+        <View style={styles.coverWrap}>
+          <Image source={{ uri: item.imageUrl }} style={styles.cover} />
+          <View style={styles.coverOverlay}>
+            <Feather
+              name={playing ? 'pause' : 'play'}
+              size={16}
+              color="#ffffff"
+              style={!playing ? styles.playIconOffset : undefined}
+            />
           </View>
         </View>
-        <Feather name={playing ? 'pause-circle' : 'play-circle'} size={24} color={playing ? '#0f766e' : '#94a3b8'} />
+        <View style={styles.trackBody}>
+          <Text style={styles.trackTitle} numberOfLines={1}>{item.title}</Text>
+          <Text style={styles.trackSubtitle} numberOfLines={1}>{item.description}</Text>
+        </View>
       </Pressable>
     );
   };
@@ -166,19 +142,22 @@ function MeditationPlaylistScreenComponent({
           <Pressable accessibilityRole="button" onPress={onBack} style={styles.headerButton}>
             <Feather name="arrow-left" size={20} color="#0f172a" />
           </Pressable>
-          <Text style={styles.headerTitle}>Meditation</Text>
-          <Pressable accessibilityRole="button" onPress={onBack} style={styles.headerButton}>
-            <Feather name="x" size={20} color="#0f172a" />
-          </Pressable>
+          <Text style={styles.headerTitle}>Healing Community</Text>
+          <View style={styles.headerButton} />
         </View>
 
-        <FlatList
-          data={tracks}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0f766e" />
+          </View>
+        ) : (
+          <FlatList
+            data={tracks}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            contentContainerStyle={styles.listContent}
+          />
+        )}
 
         {mergedBottomNav ? <BottomNav {...mergedBottomNav} /> : null}
       </View>
@@ -222,47 +201,64 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 220,
   },
-  separator: {
-    height: 12,
-  },
-  row: {
+  trackCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 24,
-    backgroundColor: '#f8fafc',
-    padding: 16,
-    gap: 16,
+    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    padding: 12,
+    gap: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   },
-  rowActive: {
-    backgroundColor: '#ecfdf5',
+  trackCardActive: {
+    borderWidth: 1,
+    borderColor: '#0f766e',
   },
-  cover: {
+  coverWrap: {
     width: 56,
     height: 56,
-    borderRadius: 18,
+    borderRadius: 14,
+    overflow: 'hidden',
   },
-  rowCopy: {
+  cover: {
+    width: '100%',
+    height: '100%',
+  },
+  coverOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(17,24,39,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playIconOffset: {
+    marginLeft: 2,
+  },
+  trackBody: {
     flex: 1,
     gap: 4,
+    justifyContent: 'center',
   },
-  rowTitle: {
-    fontSize: 15,
+  trackTitle: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#0f172a',
   },
-  rowSubtitle: {
+  trackSubtitle: {
     fontSize: 12,
     color: '#475569',
   },
-  rowMeta: {
-    flexDirection: 'row',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  rowMetaLabel: {
-    fontSize: 12,
-    color: '#475569',
   },
 });
 

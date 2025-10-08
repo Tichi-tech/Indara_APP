@@ -44,6 +44,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         UIBackgroundModes: ['audio'],
+        NSMicrophoneUsageDescription: 'Not used',
       },
     },
     android: {
@@ -52,7 +53,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         backgroundColor: '#ffffff',
       },
       package: 'live.indara.app',
-      permissions: ['RECORD_AUDIO'],
+      permissions: [
+        'RECORD_AUDIO',
+        'android.permission.POST_NOTIFICATIONS',
+        'android.permission.FOREGROUND_SERVICE',
+        'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK',
+        'android.permission.WAKE_LOCK',
+        'android.permission.BLUETOOTH_CONNECT',
+      ],
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       softwareKeyboardLayoutMode: 'pan',
@@ -60,7 +68,19 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     web: {
       favicon: './assets/favicon.png',
     },
-    plugins: ['expo-router', 'expo-web-browser', 'expo-dev-client', 'expo-audio'],
+    plugins: [
+      [
+        'expo-build-properties',
+        {
+          android: {
+            kotlinVersion: '2.0.21',  // KSP-compatible Kotlin version
+          },
+        },
+      ],
+      'expo-router',
+      'expo-web-browser',
+      'expo-dev-client',
+    ],
     extra: {
       ...config.extra,
       router: config.extra?.router ?? {},

@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,8 +12,16 @@ type RealtimeHandlers = {
 export function useRealtimeUpdates(handlers: RealtimeHandlers) {
   const { user } = useAuth();
 
-  const setup = useCallback(() => {
-    if (!user?.id) return () => {};
+  // Store handlers in a ref to avoid re-subscribing when they change
+  const handlersRef = useRef(handlers);
+
+  // Update ref when handlers change, but don't trigger re-subscription
+  useEffect(() => {
+    handlersRef.current = handlers;
+  }, [handlers]);
+
+  useEffect(() => {
+    if (!user?.id) return;
 
     const jobChannel = supabase
       .channel('job_updates')
@@ -26,7 +34,7 @@ export function useRealtimeUpdates(handlers: RealtimeHandlers) {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          handlers.onJobUpdate?.(payload.new);
+          handlersRef.current.onJobUpdate?.(payload.new);
         }
       )
       .subscribe();
@@ -43,7 +51,7 @@ export function useRealtimeUpdates(handlers: RealtimeHandlers) {
         (payload) => {
           const track = payload.new;
           if (track.is_featured || track.is_published) {
-            handlers.onNewFeaturedTrack?.(track);
+            handlersRef.current.onNewFeaturedTrack?.(track);
           }
         }
       )
@@ -57,7 +65,7 @@ export function useRealtimeUpdates(handlers: RealtimeHandlers) {
         (payload) => {
           const track = payload.new;
           if (track.is_featured || track.is_published) {
-            handlers.onNewFeaturedTrack?.(track);
+            handlersRef.current.onNewFeaturedTrack?.(track);
           }
         }
       )
@@ -74,7 +82,7 @@ export function useRealtimeUpdates(handlers: RealtimeHandlers) {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          handlers.onTrackUpdate?.(payload.new ?? payload.old);
+          handlersRef.current.onTrackUpdate?.(payload.new ?? payload.old);
         }
       )
       .subscribe();
@@ -84,12 +92,5 @@ export function useRealtimeUpdates(handlers: RealtimeHandlers) {
       supabase.removeChannel(communityChannel);
       supabase.removeChannel(userTracksChannel);
     };
-  }, [user?.id, handlers]);
-
-  useEffect(() => {
-    const cleanup = setup();
-    return cleanup;
-  }, [setup]);
-
-  return { resubscribe: setup };
+  }, [user?.id]);
 }

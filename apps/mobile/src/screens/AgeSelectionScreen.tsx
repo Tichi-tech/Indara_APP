@@ -1,17 +1,23 @@
-import { memo } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { memo, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type AgeSelectionScreenProps = {
   userName?: string;
-  onAgeSelected?: (ageGroup: '18+' | '13-17') => void;
+  onAgeSelected?: (ageGroup: '21+' | '15-21') => void;
+  isLoading?: boolean;
 };
 
 function AgeSelectionScreenComponent({
   userName = 'User',
   onAgeSelected,
+  isLoading = false,
 }: AgeSelectionScreenProps) {
-  const handleAgeSelection = (ageGroup: '18+' | '13-17') => {
+  const [selectedAge, setSelectedAge] = useState<'21+' | '15-21' | null>(null);
+
+  const handleAgeSelection = (ageGroup: '21+' | '15-21') => {
+    if (isLoading) return;
+    setSelectedAge(ageGroup);
     onAgeSelected?.(ageGroup);
   };
 
@@ -32,18 +38,34 @@ function AgeSelectionScreenComponent({
         <View style={styles.buttonsContainer}>
           <Pressable
             accessibilityRole="button"
-            style={styles.ageButton}
-            onPress={() => handleAgeSelection('18+')}
+            style={[
+              styles.ageButton,
+              (isLoading || selectedAge === '15-21') && styles.ageButtonDisabled,
+            ]}
+            onPress={() => handleAgeSelection('21+')}
+            disabled={isLoading}
           >
-            <Text style={styles.ageButtonText}>18 years and older</Text>
+            {isLoading && selectedAge === '21+' ? (
+              <ActivityIndicator color="#1F1F1F" />
+            ) : (
+              <Text style={styles.ageButtonText}>21 years and older</Text>
+            )}
           </Pressable>
 
           <Pressable
             accessibilityRole="button"
-            style={styles.ageButton}
-            onPress={() => handleAgeSelection('13-17')}
+            style={[
+              styles.ageButton,
+              (isLoading || selectedAge === '21+') && styles.ageButtonDisabled,
+            ]}
+            onPress={() => handleAgeSelection('15-21')}
+            disabled={isLoading}
           >
-            <Text style={styles.ageButtonText}>13-17 years old</Text>
+            {isLoading && selectedAge === '15-21' ? (
+              <ActivityIndicator color="#1F1F1F" />
+            ) : (
+              <Text style={styles.ageButtonText}>15-21 years old</Text>
+            )}
           </Pressable>
         </View>
       </View>
@@ -94,6 +116,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1F1F1F',
     fontFamily: 'SF Pro',
+  },
+  ageButtonDisabled: {
+    opacity: 0.5,
   },
 });
 

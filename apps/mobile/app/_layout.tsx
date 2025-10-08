@@ -67,9 +67,9 @@ export default function RootLayout() {
   }, []);
 
 
-  // Show loading or handle auth state
+  // Show loading - returning null to prevent layout warning
   if (loading) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   const showMainApp = session && hasCompletedOnboarding;
