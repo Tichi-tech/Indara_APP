@@ -85,29 +85,32 @@ function MySongsScreenComponent({
       if (tracksResult.error) throw tracksResult.error;
       if (playlistsResult.error) throw playlistsResult.error;
 
-      const baseTracks = (tracksResult.data ?? []).map((item: any) => {
-        const fallbackImage = getSmartThumbnail(
-          item.title ?? 'Untitled',
-          item.prompt ?? item.admin_notes ?? '',
-          item.style ?? ''
-        );
+      // Filter out tracks without audio URLs (same as website behavior)
+      const baseTracks = (tracksResult.data ?? [])
+        .filter((item: any) => item.audio_url)  // Only include playable tracks
+        .map((item: any) => {
+          const fallbackImage = getSmartThumbnail(
+            item.title ?? 'Untitled',
+            item.prompt ?? item.admin_notes ?? '',
+            item.style ?? ''
+          );
 
-        const imageUrl = resolveImage(item.thumbnail_url) ?? fallbackImage;
+          const imageUrl = resolveImage(item.thumbnail_url) ?? fallbackImage;
 
-        return {
-          id: item.id,
-          title: item.title ?? 'Untitled',
-          description: item.prompt ?? item.admin_notes ?? '',
-          durationLabel: item.duration ?? '3:00',
-          audioUrl: item.audio_url ?? undefined,
-          imageUrl,
-          plays: item.play_count ?? 0,
-          likes: item.like_count ?? 0,
-          isLiked: Boolean(item.is_liked),
-          isPublished: Boolean(item.is_published),
-          createdAt: item.created_at,
-        } as LibraryTrack;
-      });
+          return {
+            id: item.id,
+            title: item.title ?? 'Untitled',
+            description: item.prompt ?? item.admin_notes ?? '',
+            durationLabel: item.duration ?? '3:00',
+            audioUrl: item.audio_url,  // Safe: filtered above
+            imageUrl,
+            plays: item.play_count ?? 0,
+            likes: item.like_count ?? 0,
+            isLiked: Boolean(item.is_liked),
+            isPublished: Boolean(item.is_published),
+            createdAt: item.created_at,
+          } as LibraryTrack;
+        });
 
       const withStats = await Promise.all(
         baseTracks.map(async (track) => {
@@ -170,6 +173,19 @@ function MySongsScreenComponent({
 
   const likedTracks = useMemo(() => tracks.filter((track) => track.isLiked), [tracks]);
 
+  // ✅ Pre-compute playback queue to avoid doing it on every click
+  const playbackQueue = useMemo(() => {
+    return filteredTracks
+      .filter((t) => t.audioUrl && t.audioUrl.trim() !== '')
+      .map((t) => ({
+        id: t.id,
+        title: t.title,
+        artist: 'You',
+        audio_url: t.audioUrl!, // Safe: filtered above
+        image_url: t.imageUrl,
+      }));
+  }, [filteredTracks]);
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadTracks();
@@ -178,7 +194,10 @@ function MySongsScreenComponent({
 
   const handlePlay = useCallback(
     async (track: LibraryTrack) => {
-      if (!track.audioUrl) return;
+      if (!track.audioUrl) {
+        console.warn('Cannot play track: missing audio URL', track.title);
+        return;
+      }
 
       const nowPlaying: Track = {
         id: track.id,
@@ -191,20 +210,14 @@ function MySongsScreenComponent({
       if (current?.id === track.id) {
         await toggle();
       } else {
-        // Convert all filtered tracks to queue
-        const queue: Track[] = filteredTracks.map((t) => ({
-          id: t.id,
-          title: t.title,
-          artist: 'You',
-          audio_url: t.audioUrl || '',
-          image_url: t.imageUrl,
-        }));
+        // ✅ Fire-and-forget: Don't block playback for analytics
+        void musicApi.recordPlay(user?.id ?? null, track.id);
 
-        await musicApi.recordPlay(user?.id ?? null, track.id);
-        await loadAndPlay(nowPlaying, queue);
+        // ✅ Use pre-computed queue (instant, no filtering/mapping)
+        await loadAndPlay(nowPlaying, playbackQueue);
       }
     },
-    [current?.id, loadAndPlay, toggle, user?.id, filteredTracks]
+    [current?.id, loadAndPlay, toggle, user?.id, playbackQueue]
   );
 
   const handleLike = useCallback(

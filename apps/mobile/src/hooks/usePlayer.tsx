@@ -107,7 +107,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       index
     );
 
-    await TrackPlayer.play();
+    // Use audioService.play() to trigger pre-buffer guard
+    await audioService.play();
     setMiniPlayerVisible(true);
   }, []);
 
@@ -151,6 +152,29 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.remove();
   }, []);
+
+  // Buffer monitoring (only warn on critical low buffer)
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const id = setInterval(async () => {
+      try {
+        const pos = await TrackPlayer.getPosition();
+        const buf = await TrackPlayer.getBufferedPosition();
+        const headroom = buf - pos;
+
+        // Only log critical buffer issues
+        if (headroom < 1) {
+          console.warn(`⚠️ Critical buffer: ${headroom.toFixed(1)}s remaining`);
+          await TrackPlayer.pause();
+        }
+      } catch (error) {
+        // Ignore errors during monitoring
+      }
+    }, 5000); // Check every 5s instead of 2s
+
+    return () => clearInterval(id);
+  }, [isPlaying]);
 
   // ✅ Memoized context value
   const value = useMemo(

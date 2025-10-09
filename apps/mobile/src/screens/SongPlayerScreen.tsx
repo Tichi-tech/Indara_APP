@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState, useCallback } from 'react';
+import { memo, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
@@ -6,10 +6,11 @@ import {
   StyleSheet,
   Text,
   View,
+  TouchableWithoutFeedback,
+  PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import Slider from '@react-native-community/slider';
 
 import { usePlayer } from '@/hooks/usePlayer';
 import { musicApi } from '@/services/musicApi';
@@ -54,11 +55,94 @@ function SongPlayerScreenComponent({
   const [showShare, setShowShare] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [seekPosition, setSeekPosition] = useState(0);
+  const seekBarRef = useRef<View>(null);
+  const seekBarWidth = useRef(0);
+  const finalSeekPosition = useRef(0);
+  const rafId = useRef<number | null>(null);
+  const durationRef = useRef(0);
+  const seekSecRef = useRef(seekSec);
 
   const coverImage = useMemo(() => {
     if (song.image_url) return song.image_url;
     return getSmartThumbnail(song.title, song.description ?? '', song.tags ?? '');
   }, [song.description, song.image_url, song.tags, song.title]);
+
+  // Throttled seek position update using requestAnimationFrame
+  const updateSeekPosition = useCallback((newSec: number) => {
+    if (rafId.current !== null) {
+      cancelAnimationFrame(rafId.current);
+    }
+    rafId.current = requestAnimationFrame(() => {
+      setSeekPosition(newSec);
+      rafId.current = null;
+    });
+  }, []);
+
+  // Cleanup RAF on unmount
+  useEffect(() => {
+    return () => {
+      if (rafId.current !== null) {
+        cancelAnimationFrame(rafId.current);
+      }
+    };
+  }, []);
+
+  // Update refs when duration or seekSec changes
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
+
+  useEffect(() => {
+    seekSecRef.current = seekSec;
+  }, [seekSec]);
+
+  // Custom seekbar PanResponder - use refs to avoid stale closures
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => {
+        const dur = durationRef.current;
+        return Number.isFinite(dur) && dur > 0;
+      },
+      onMoveShouldSetPanResponder: () => {
+        const dur = durationRef.current;
+        return Number.isFinite(dur) && dur > 0;
+      },
+      onPanResponderGrant: (evt) => {
+        const dur = durationRef.current;
+        if (!Number.isFinite(dur) || dur <= 0) return;
+        const durSec = dur / 1000;
+
+        setIsSeeking(true);
+        const touchX = evt.nativeEvent.locationX;
+        const ratio = Math.max(0, Math.min(touchX / Math.max(seekBarWidth.current, 1), 1));
+        const newSec = ratio * durSec;
+        finalSeekPosition.current = newSec;
+        updateSeekPosition(newSec);
+      },
+      onPanResponderMove: (evt) => {
+        const dur = durationRef.current;
+        if (!Number.isFinite(dur) || dur <= 0) return;
+        const durSec = dur / 1000;
+
+        const touchX = evt.nativeEvent.locationX;
+        const ratio = Math.max(0, Math.min(touchX / Math.max(seekBarWidth.current, 1), 1));
+        const newSec = ratio * durSec;
+        finalSeekPosition.current = newSec;
+        updateSeekPosition(newSec);
+      },
+      onPanResponderRelease: async () => {
+        const dur = durationRef.current;
+        if (!Number.isFinite(dur) || dur <= 0) return;
+        const durSec = dur / 1000;
+
+        const seekTo = Math.max(0, Math.min(finalSeekPosition.current, durSec));
+        setIsSeeking(false);
+        await seekSecRef.current(seekTo);
+      },
+    })
+  ).current;
 
   useEffect(() => {
     const loadTrack = async () => {
@@ -137,8 +221,13 @@ function SongPlayerScreenComponent({
   };
 
   // Convert to seconds for slider
-  const durationSec = (duration || 1) / 1000;
-  const positionSec = position / 1000;
+  const hasDuration = Number.isFinite(duration) && duration > 0;
+  const durationSec = hasDuration ? duration / 1000 : 0;
+  const currentPositionSec = position / 1000;
+  const displayPositionSec = isSeeking ? seekPosition : currentPositionSec;
+
+  // Avoid NaN/Infinity in % width
+  const pct = hasDuration ? (displayPositionSec / durationSec) * 100 : 0;
 
   const progress = duration > 0 ? position / duration : 0;
 
@@ -174,9 +263,10 @@ function SongPlayerScreenComponent({
         source={{ uri: coverImage }}
         style={styles.backgroundImage}
         resizeMode="cover"
+        pointerEvents="box-none"
       >
         {/* Gradient Overlay */}
-        <View style={styles.gradientOverlay} />
+        <View style={styles.gradientOverlay} pointerEvents="none" />
 
         {/* Content */}
         <SafeAreaView style={styles.contentContainer}>
@@ -261,6 +351,37 @@ function SongPlayerScreenComponent({
               </Text>
             </View>
 
+            {/* Custom Seekbar */}
+            <View style={styles.sliderRow}>
+              <View
+                ref={seekBarRef}
+                style={styles.seekBarContainer}
+                onLayout={(e) => {
+                  seekBarWidth.current = e.nativeEvent.layout.width;
+                }}
+                pointerEvents={hasDuration ? 'auto' : 'none'}
+                {...(hasDuration ? panResponder.panHandlers : {})}
+              >
+                {/* Track background */}
+                <View style={styles.seekBarTrack} />
+                {/* Progress */}
+                <View
+                  style={[
+                    styles.seekBarProgress,
+                    { width: `${pct}%` },
+                  ]}
+                />
+                {/* Thumb */}
+                <View
+                  style={[
+                    styles.seekBarThumb,
+                    { left: `${pct}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.timeText}>{formatTime(position)} / {formatTime(duration)}</Text>
+            </View>
+
             {/* Controls */}
             <View style={styles.controls}>
               <Pressable onPress={handleRestart} style={styles.controlButton}>
@@ -277,22 +398,6 @@ function SongPlayerScreenComponent({
                   <Feather name="play" size={24} color="#ffffff" />
                 )}
               </Pressable>
-
-              <View style={styles.progressContainer}>
-                <Slider
-                  style={styles.slider}
-                  minimumValue={0}
-                  maximumValue={durationSec}
-                  value={positionSec}
-                  onSlidingComplete={(sec) => seekSec(sec)}
-                  minimumTrackTintColor="#ffffff"
-                  maximumTrackTintColor="rgba(255,255,255,0.3)"
-                  thumbTintColor="#ffffff"
-                  step={0.1}
-                />
-              </View>
-
-              <Text style={styles.timeText}>{formatTime(position)} / {formatTime(duration)}</Text>
             </View>
           </View>
         </SafeAreaView>
@@ -415,10 +520,44 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     lineHeight: 24,
   },
+  sliderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  seekBarContainer: {
+    flex: 1,
+    height: 40,
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  seekBarTrack: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 2,
+  },
+  seekBarProgress: {
+    position: 'absolute',
+    height: 4,
+    backgroundColor: '#ffffff',
+    borderRadius: 2,
+  },
+  seekBarThumb: {
+    position: 'absolute',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    marginLeft: -8,
+    top: '50%',
+    marginTop: -8,
+  },
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    justifyContent: 'center',
+    gap: 32,
   },
   controlButton: {
     padding: 8,
@@ -433,19 +572,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 3,
   },
-  progressContainer: {
-    flex: 1,
-  },
-  slider: {
-    width: '100%',
-    height: 4,
-  },
   timeText: {
     color: '#ffffff',
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '500',
-    minWidth: 50,
-    textAlign: 'right',
+    minWidth: 100,
   },
 });
 

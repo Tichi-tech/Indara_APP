@@ -5,29 +5,33 @@
     "apps/*",
     "packages/*"
   ],
+  "engines": {
+    "node": ">=20.19.4"
+  },
   "scripts": {
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:mobile": "npm run start --workspace=apps/mobile",
     "build": "npm run build --workspace=apps/web",
     "build:web": "npm run build --workspace=apps/web",
     "typecheck": "npm run typecheck -ws",
-    "typecheck:shared": "npm run typecheck --workspace=packages/shared",
+    "typecheck:shared": "npm run typecheck --workspace=shared",
     "typecheck:web": "npm run typecheck --workspace=apps/web",
     "typecheck:mobile": "npm run typecheck --workspace=apps/mobile",
-    "install:all": "npm install && npm install --workspace=apps/web && npm install --workspace=packages/shared && npm install --workspace=apps/mobile"
+    "postinstall": "patch-package"
   },
   "overrides": {
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-native-reanimated": "~4.1.1",
-    "react-native-track-player": "4.1.2"
+    "react-native-reanimated": "~3.19.0",
+    "react-native-track-player": "4.1.2",
+    "@types/react": "19.1.7",
+    "@types/react-dom": "19.1.5"
   },
   "devDependencies": {
+    "patch-package": "^8.0.1",
     "typescript": "^5.0.2"
   },
   "dependencies": {
-    "@react-native-async-storage/async-storage": "^2.2.0",
-    "expo-build-properties": "^1.0.9",
-    "react-native-url-polyfill": "^3.0.0"
+    "whatwg-fetch": "^3.6.20"
   }
 }

@@ -10,9 +10,7 @@ const EAS_PROJECT_ID = '2e12b434-114c-4e93-8f80-64f9cdaf1239';
 const readEnv = (keys: string[], fallback?: string) => {
   for (const key of keys) {
     const value = process.env[key];
-    if (typeof value === 'string' && value.length > 0) {
-      return value;
-    }
+    if (typeof value === 'string' && value.length > 0) return value;
   }
   return fallback;
 };
@@ -31,49 +29,59 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
-    newArchEnabled: true,
+
+    // ✅ Legacy Architecture for RNTP 4.1.2 + Reanimated 3.x
+    newArchEnabled: false,
+
     scheme: 'indara',
+
     splash: {
       image: './assets/splash-icon.png',
       resizeMode: 'contain',
       backgroundColor: '#ffffff',
     },
+
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'live.indara.app',
       infoPlist: {
-        ITSAppUsesNonExemptEncryption: false,
+        // Required for background/lock-screen playback
         UIBackgroundModes: ['audio'],
-        NSMicrophoneUsageDescription: 'Not used',
+        // Remove mic usage string since playback doesn't need mic permission
+        // (keeps App Store review simpler)
       },
     },
+
     android: {
+      package: 'live.indara.app',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#ffffff',
       },
-      package: 'live.indara.app',
+      // ✅ Only the permissions needed for media playback service + notification
       permissions: [
-        'RECORD_AUDIO',
         'android.permission.POST_NOTIFICATIONS',
         'android.permission.FOREGROUND_SERVICE',
         'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK',
         'android.permission.WAKE_LOCK',
-        'android.permission.BLUETOOTH_CONNECT',
+        'android.permission.BLUETOOTH_CONNECT' // optional; keep if you target BT controls
       ],
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       softwareKeyboardLayoutMode: 'pan',
     },
+
     web: {
       favicon: './assets/favicon.png',
     },
+
     plugins: [
       [
         'expo-build-properties',
         {
           android: {
-            kotlinVersion: '2.0.21',  // KSP-compatible Kotlin version
+            // ✅ Kotlin 2.1.10 for RNTP 4.1.2 compatibility
+            kotlinVersion: '2.1.10',
           },
         },
       ],
@@ -81,12 +89,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-web-browser',
       'expo-dev-client',
     ],
+
     extra: {
       ...config.extra,
       router: config.extra?.router ?? {},
-      eas: {
-        projectId: EAS_PROJECT_ID,
-      },
+      eas: { projectId: EAS_PROJECT_ID },
       supabaseUrl,
       supabaseAnonKey,
       forceProxy: process.env.EXPO_PUBLIC_FORCE_PROXY,
