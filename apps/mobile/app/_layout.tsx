@@ -24,18 +24,20 @@ export default function RootLayout() {
       const { data, error } = await supabase
         .from('profiles')
         .select('display_name')
-        .eq('user_id', userId)
-        .single();
+        .eq('id', userId)  // Fixed: profiles table uses 'id', not 'user_id'
+        .maybeSingle();    // Fixed: use maybeSingle() to avoid error if no profile exists
 
       // User has completed onboarding if they have a display_name
       return !error && data?.display_name;
-    } catch {
+    } catch (err) {
+      console.warn('Failed to check onboarding status:', err);
       return false;
     }
   };
 
-  // Check session on app start
+  // Check session on app start and when app comes to foreground
   useEffect(() => {
+    // Initial session check
     supabase.auth.getSession().then(async ({ data }) => {
       console.log('📱 Session check:', data.session ? 'LOGGED IN' : 'NOT LOGGED IN');
       setSession(data.session);
@@ -48,17 +50,29 @@ export default function RootLayout() {
       setLoading(false);
     });
 
-    // Listen for auth changes
+    // Listen for auth changes (handles token refresh, sign in/out)
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, updatedSession) => {
       console.log('📱 Auth state change:', event, updatedSession ? 'LOGGED IN' : 'NOT LOGGED IN');
+
+      // Update session state
       setSession(updatedSession);
 
       if (updatedSession?.user) {
+        // Check onboarding status for logged in users
         const completed = await checkOnboardingStatus(updatedSession.user.id);
         setHasCompletedOnboarding(completed);
+
+        // If token was refreshed, ensure user stays logged in
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('✅ Token refreshed successfully - user remains logged in');
+        }
       } else {
+        // User logged out
         setHasCompletedOnboarding(false);
       }
+
+      // Ensure loading is false after auth state changes
+      setLoading(false);
     });
 
     return () => {
@@ -78,28 +92,26 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <PlayerProvider>
-        <View style={{ flex: 1 }}>
-          <Stack screenOptions={{ headerShown: false }}>
-            {showMainApp ? (
-              <>
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="playlist/[id]" options={{ headerShown: true, title: 'Playlist' }} />
-                <Stack.Screen name="analytics" options={{ headerShown: false }} />
-                <Stack.Screen name="create" options={{ headerShown: false }} />
-                <Stack.Screen name="account/edit-profile" options={{ headerShown: true, title: 'Edit Profile' }} />
-                <Stack.Screen name="account/profile" options={{ headerShown: true, title: 'Profile Overview' }} />
-                <Stack.Screen name="account/notifications" options={{ headerShown: true, title: 'Notifications' }} />
-                <Stack.Screen name="account/privacy" options={{ headerShown: true, title: 'Privacy & Security' }} />
-                <Stack.Screen name="account/support" options={{ headerShown: true, title: 'Help & Support' }} />
-              </>
-            ) : (
-              <Stack.Screen name="(auth)" />
-            )}
-          </Stack>
-          {showMainApp && !isSongPlayerRoute ? (
-            <GlobalAudioPlayer onPress={() => router.push('/(tabs)/now-playing')} />
-          ) : null}
-        </View>
+        <Stack screenOptions={{ headerShown: false }}>
+          {showMainApp ? (
+            <>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="playlist/[id]" options={{ headerShown: true, title: 'Playlist' }} />
+              <Stack.Screen name="analytics" options={{ headerShown: false }} />
+              <Stack.Screen name="create" options={{ headerShown: false }} />
+              <Stack.Screen name="account/edit-profile" options={{ headerShown: true, title: 'Edit Profile' }} />
+              <Stack.Screen name="account/profile" options={{ headerShown: true, title: 'Profile Overview' }} />
+              <Stack.Screen name="account/notifications" options={{ headerShown: true, title: 'Notifications' }} />
+              <Stack.Screen name="account/privacy" options={{ headerShown: true, title: 'Privacy & Security' }} />
+              <Stack.Screen name="account/support" options={{ headerShown: true, title: 'Help & Support' }} />
+            </>
+          ) : (
+            <Stack.Screen name="(auth)" />
+          )}
+        </Stack>
+        {showMainApp && !isSongPlayerRoute ? (
+          <GlobalAudioPlayer onPress={() => router.push('/(tabs)/now-playing')} />
+        ) : null}
       </PlayerProvider>
     </SafeAreaProvider>
   );
