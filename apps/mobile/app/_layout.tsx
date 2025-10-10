@@ -17,6 +17,7 @@ export default function RootLayout() {
   const pathname = usePathname();
 
   const isSongPlayerRoute = pathname?.includes('/now-playing');
+  const isCreateRoute = pathname?.includes('/create');
 
   // Check if user has completed onboarding
   const checkOnboardingStatus = async (userId: string) => {
@@ -24,11 +25,11 @@ export default function RootLayout() {
       const { data, error } = await supabase
         .from('profiles')
         .select('display_name')
-        .eq('id', userId)  // Fixed: profiles table uses 'id', not 'user_id'
-        .maybeSingle();    // Fixed: use maybeSingle() to avoid error if no profile exists
+        .eq('user_id', userId)
+        .maybeSingle();
 
       // User has completed onboarding if they have a display_name
-      return !error && data?.display_name;
+      return !error && !!data?.display_name;
     } catch (err) {
       console.warn('Failed to check onboarding status:', err);
       return false;
@@ -109,7 +110,7 @@ export default function RootLayout() {
             <Stack.Screen name="(auth)" />
           )}
         </Stack>
-        {showMainApp && !isSongPlayerRoute ? (
+        {showMainApp && !isSongPlayerRoute && !isCreateRoute ? (
           <GlobalAudioPlayer onPress={() => router.push('/(tabs)/now-playing')} />
         ) : null}
       </PlayerProvider>

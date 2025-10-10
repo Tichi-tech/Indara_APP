@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -28,6 +29,7 @@ export type GeneratedTrack = {
 export type CreateMusicScreenProps = {
   onClose: () => void;
   onPlaySong?: (track: GeneratedTrack) => void;
+  onReturnHome?: () => void;
 };
 
 type Message = {
@@ -45,7 +47,7 @@ const INITIAL_MESSAGES: Record<'Music' | 'Meditation', string> = {
 
 const DEFAULT_DURATION = '180';
 
-export function CreateMusicScreen({ onClose, onPlaySong }: CreateMusicScreenProps) {
+export function CreateMusicScreen({ onClose, onPlaySong, onReturnHome }: CreateMusicScreenProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'Music' | 'Meditation'>('Music');
   const [messages, setMessages] = useState<Message[]>([
@@ -59,8 +61,11 @@ export function CreateMusicScreen({ onClose, onPlaySong }: CreateMusicScreenProp
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [currentJobStatus, setCurrentJobStatus] = useState<string | null>(null);
   const [duration, setDuration] = useState(DEFAULT_DURATION);
+  const [completedTrack, setCompletedTrack] = useState<GeneratedTrack | null>(null);
+  const [playedJobIds, setPlayedJobIds] = useState<Set<string>>(new Set());
 
   const flatListRef = useRef<FlatList>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
@@ -68,9 +73,47 @@ export function CreateMusicScreen({ onClose, onPlaySong }: CreateMusicScreenProp
     });
   };
 
+  // Smooth progress animation
+  const animateProgress = (targetProgress: number, currentProgress: number) => {
+    // Clear any existing interval
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+
+    // Don't animate if target is less than current (going backwards)
+    if (targetProgress <= currentProgress) {
+      setGenerationProgress(targetProgress);
+      return;
+    }
+
+    // Animate from current to target in steps of 10%
+    let progress = currentProgress;
+    progressIntervalRef.current = setInterval(() => {
+      progress += 10;
+      if (progress >= targetProgress) {
+        setGenerationProgress(targetProgress);
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
+      } else {
+        setGenerationProgress(progress);
+      }
+    }, 1000); // Update every 1 second
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages.length]);
+
+  // Clean up progress interval on unmount
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     setMessages([{ id: 'welcome', text: INITIAL_MESSAGES[activeTab], isUser: false }]);
@@ -79,55 +122,137 @@ export function CreateMusicScreen({ onClose, onPlaySong }: CreateMusicScreenProp
     setGenerationProgress(0);
     setCurrentJobId(null);
     setCurrentJobStatus(null);
+    setCompletedTrack(null);
   }, [activeTab]);
 
-  const handleJobUpdate = (job: any) => {
-    if (!job || job.id !== currentJobId) return;
+  // Check for active jobs on mount - resume progress if user returns
+  useEffect(() => {
+    const checkActiveJob = async () => {
+      if (!user?.id) return;
+
+      try {
+        const { data: jobs } = await musicApi.getUserJobs(user.id);
+        if (!jobs || jobs.length === 0) {
+          return;
+        }
+
+        // Find the most recent job for current tab (including completed ones!)
+        // BUT exclude jobs that user already played
+        const activeJob = jobs.find(
+          (j: any) =>
+            (j.status === 'pending' || j.status === 'processing' || j.status === 'completed') &&
+            j.job_type === (activeTab === 'Music' ? 'music' : 'session') &&
+            !playedJobIds.has(j.id) // ✅ Skip already-played jobs
+        );
+
+        if (activeJob) {
+          // ✅ Set state immediately to show UI faster
+          setCurrentJobId(activeJob.id);
+          setShowGenerateButton(true);
+
+          // Set enriched prompt from job's user_text
+          if (activeJob.user_text || activeJob.hints?.user_text) {
+            setEnrichedPrompt(activeJob.user_text || activeJob.hints?.user_text);
+          }
+
+          // ✅ Set initial progress immediately based on status
+          if (activeJob.status === 'pending') {
+            setGenerationProgress(10);
+            setCurrentJobStatus('pending');
+          } else if (activeJob.status === 'processing') {
+            setGenerationProgress(50);
+            setCurrentJobStatus('processing');
+          } else if (activeJob.status === 'completed') {
+            setGenerationProgress(100);
+            setCurrentJobStatus('completed');
+          }
+
+          // Then call handleJobUpdate for detailed processing (extracts track data)
+          // Skip ID check since currentJobId state hasn't updated yet
+          handleJobUpdate(activeJob, true);
+        }
+      } catch (error) {
+        console.warn('Failed to check active jobs:', error);
+      }
+    };
+
+    checkActiveJob();
+  }, [user?.id, activeTab, playedJobIds]);
+
+  const handleJobUpdate = (job: any, skipIdCheck = false) => {
+    // Skip ID check when called from checkActiveJob (during restoration)
+    if (!job || (!skipIdCheck && job.id !== currentJobId)) return;
+
+    // Only log status changes, not every update
+    if (job.status !== currentJobStatus) {
+      console.log(`📊 Job status: ${job.status}`);
+    }
 
     setCurrentJobStatus(job.status);
 
     switch (job.status) {
       case 'pending':
-        setGenerationProgress(15);
+        animateProgress(10, generationProgress);
         break;
       case 'processing':
-        setGenerationProgress(60);
+        animateProgress(50, generationProgress);
         break;
       case 'completed':
         setGenerationProgress(100);
-        if (job.generated_tracks && job.generated_tracks.length > 0) {
-          const trackData = job.generated_tracks[0];
+
+        // ✅ Extract track data from job.result directly (already contains all info!)
+        let trackId: string | undefined;
+        let trackTitle: string | undefined;
+        let audioUrl: string | undefined;
+
+        if (job.generated_tracks?.[0]) {
+          // From generated_tracks array
+          const track = job.generated_tracks[0];
+          trackId = track.id;
+          trackTitle = track.title;
+          audioUrl = track.audio_url;
+        } else if (job.result) {
+          // From job.result (contains trackId, title, audio_url)
+          trackId = job.result.trackId || job.result.track_id;
+          trackTitle = job.result.title;
+          audioUrl = job.result.audio_url || job.result.music_url;
+        }
+
+        if (trackId && audioUrl) {
           const generatedTrack: GeneratedTrack = {
-            id: trackData.id,
-            title: trackData.title ?? `${activeTab} Track`,
-            description: trackData.prompt ?? `AI-generated ${activeTab.toLowerCase()}`,
-            duration: `${Math.round((trackData.duration_sec ?? 180) / 60)}:${String((trackData.duration_sec ?? 180) % 60).padStart(2, '0')}`,
-            audio_url: trackData.audio_url,
+            id: trackId,
+            title: trackTitle ?? `${activeTab} Track`,
+            description: `AI-generated ${activeTab.toLowerCase()}`,
+            duration: '3:00', // Default duration
+            audio_url: audioUrl,
             status: job.status,
           };
 
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `complete-${Date.now()}`,
-              text:
-                activeTab === 'Music'
-                  ? '🎉 Your healing music is ready! Tapping play now.'
-                  : '🧘 Your meditation session is ready! Starting playback now.',
-              isUser: false,
-            },
-          ]);
+          // ✅ STORE track instead of auto-playing
+          setCompletedTrack(generatedTrack);
 
-          scrollToBottom();
-
-          setTimeout(() => {
-            onPlaySong?.(generatedTrack);
-            onClose();
-          }, 1200);
+          // ✅ Show completion message (only if not already shown)
+          if (!messages.some(m => m.id.startsWith('complete-'))) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `complete-${Date.now()}`,
+                text:
+                  activeTab === 'Music'
+                    ? '🎉 Your healing music is ready! Click "Play Now" to listen.'
+                    : '🧘 Your meditation session is ready! Click "Play Now" to listen.',
+                isUser: false,
+              },
+            ]);
+            scrollToBottom();
+          }
+        } else {
+          console.warn('⚠️ Job completed but no track data');
         }
         break;
       case 'failed':
         setGenerationProgress(0);
+        setCompletedTrack(null);
         setMessages((prev) => [
           ...prev,
           {
@@ -180,7 +305,12 @@ export function CreateMusicScreen({ onClose, onPlaySong }: CreateMusicScreenProp
 
     setIsLoading(true);
     try {
-      const { data } = await musicApi.talkToDara({
+      // Add timeout wrapper (30 seconds)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out after 30 seconds')), 30000)
+      );
+
+      const apiPromise = musicApi.talkToDara({
         userInput: trimmed,
         sessionType: activeTab.toLowerCase(),
         conversationHistory: history.map((msg) => ({
@@ -189,35 +319,77 @@ export function CreateMusicScreen({ onClose, onPlaySong }: CreateMusicScreenProp
         })),
       });
 
-      const responseText =
-        data?.response ??
-        (activeTab === 'Music'
-          ? "I'm listening. Tell me more about the mood you'd like to set for your music."
-          : "I'm here for you. What kind of meditation experience are you seeking?");
+      const { data, error } = await Promise.race([apiPromise, timeoutPromise]) as any;
 
-      const aiMessage: Message = {
-        id: `ai-${Date.now()}`,
-        text: responseText,
-        isUser: false,
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-      scrollToBottom();
+      if (error) {
+        throw error;
+      }
 
-      const enriched = data?.enrichedPrompt || (responseText.length > 50 ? responseText : '');
-      if (enriched) {
-        setEnrichedPrompt(enriched);
+      // Handle the 3-step conversation flow (same as web)
+      if (data.status === 'question' && data.question) {
+        // Step 1: Dara asks clarifying questions
+        const aiMessage: Message = {
+          id: `ai-${Date.now()}`,
+          text: data.question,
+          isUser: false,
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+        scrollToBottom();
+
+      } else if (data.status === 'offer' && data.confirmation_question) {
+        // Step 2: Dara offers a plan and asks for confirmation
+        const aiMessage: Message = {
+          id: `ai-${Date.now()}`,
+          text: data.confirmation_question,
+          isUser: false,
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+        scrollToBottom();
+
+      } else if (data.status === 'final' && data.nl_description) {
+        // Step 3: User confirmed - show the final plan
+        const aiMessage: Message = {
+          id: `ai-${Date.now()}`,
+          text: data.nl_description,
+          isUser: false,
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+        scrollToBottom();
+
+        // NOW enable the Generate button with the enriched prompt
+        setEnrichedPrompt(data.nl_description);
         setShowGenerateButton(true);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `ai-${Date.now()}-prompt`,
-            text:
-              activeTab === 'Music'
-                ? 'Great, I drafted a description. When you are ready, press Generate to create your track.'
-                : 'I have shaped your meditation session. Tap Generate when you are ready.',
-            isUser: false,
-          },
-        ]);
+
+        // Add a message indicating ready to generate
+        setTimeout(() => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `ai-${Date.now()}-ready`,
+              text:
+                activeTab === 'Music'
+                  ? '🎵 Your music plan is ready! Tap "Generate" when you\'re ready to create your healing music.'
+                  : '🧘 Your meditation plan is ready! Tap "Generate" when you\'re ready to create your session.',
+              isUser: false,
+            },
+          ]);
+          scrollToBottom();
+        }, 300);
+
+      } else {
+        // Fallback for unexpected response format
+        const responseText =
+          data?.question ?? data?.response ??
+          (activeTab === 'Music'
+            ? "I'm listening. Tell me more about the mood you'd like to set for your music."
+            : "I'm here for you. What kind of meditation experience are you seeking?");
+
+        const aiMessage: Message = {
+          id: `ai-${Date.now()}`,
+          text: responseText,
+          isUser: false,
+        };
+        setMessages((prev) => [...prev, aiMessage]);
         scrollToBottom();
       }
     } catch (error) {
@@ -248,7 +420,8 @@ export function CreateMusicScreen({ onClose, onPlaySong }: CreateMusicScreenProp
         if (error) throw error;
         if (data?.job_id) {
           setCurrentJobId(data.job_id);
-          setGenerationProgress(15);
+          animateProgress(10, 0); // Start animation from 0% to 10%
+          setCompletedTrack(null); // Clear any previous completed track
           setMessages((prev) => [
             ...prev,
             {
@@ -268,7 +441,8 @@ export function CreateMusicScreen({ onClose, onPlaySong }: CreateMusicScreenProp
         if (error) throw error;
         if (data?.job_id) {
           setCurrentJobId(data.job_id);
-          setGenerationProgress(15);
+          animateProgress(10, 0); // Start animation from 0% to 10%
+          setCompletedTrack(null); // Clear any previous completed track
           setMessages((prev) => [
             ...prev,
             {
@@ -302,6 +476,29 @@ export function CreateMusicScreen({ onClose, onPlaySong }: CreateMusicScreenProp
     }
   };
 
+  const handlePlayNow = () => {
+    if (completedTrack && currentJobId) {
+      onPlaySong?.(completedTrack);
+
+      // ✅ Mark this job as played so it won't show again
+      setPlayedJobIds(prev => new Set(prev).add(currentJobId));
+
+      // ✅ Clear job state so user can start fresh next time
+      setCompletedTrack(null);
+      setCurrentJobId(null);
+      setCurrentJobStatus(null);
+      setGenerationProgress(0);
+      setShowGenerateButton(false);
+      setEnrichedPrompt('');
+
+      // Reset to initial conversation
+      setMessages([{ id: 'welcome', text: INITIAL_MESSAGES[activeTab], isUser: false }]);
+
+      // Navigate to now-playing screen
+      onClose();
+    }
+  };
+
   const renderMessage = ({ item }: { item: Message }) => (
     <View
       style={[
@@ -323,20 +520,48 @@ export function CreateMusicScreen({ onClose, onPlaySong }: CreateMusicScreenProp
     []
   );
 
+  const handleRefresh = () => {
+    // ✅ Mark current job as "consumed" if it exists
+    if (currentJobId) {
+      setPlayedJobIds(prev => new Set(prev).add(currentJobId));
+    }
+
+    // Reset the conversation
+    setMessages([{ id: 'welcome', text: INITIAL_MESSAGES[activeTab], isUser: false }]);
+    setEnrichedPrompt('');
+    setShowGenerateButton(false);
+    setGenerationProgress(0);
+    setCurrentJobId(null);
+    setCurrentJobStatus(null);
+    setCompletedTrack(null);
+    setInputText('');
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={styles.wrapper}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View style={styles.header}>
-        <Pressable onPress={onClose} style={styles.iconButton} accessibilityRole="button">
-          <Feather name="x" size={20} color="#111827" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Create {activeTab}</Text>
-        <Pressable onPress={manualCheck} style={styles.iconButton} accessibilityRole="button">
-          <Feather name="refresh-cw" size={20} color="#6b7280" />
-        </Pressable>
-      </View>
+    <SafeAreaView style={styles.wrapper} edges={['top']}>
+      <KeyboardAvoidingView
+        style={styles.content}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.header}>
+          <Pressable
+            onPress={onReturnHome || onClose}
+            style={styles.iconButton}
+            accessibilityRole="button"
+            accessibilityLabel="Return to home"
+          >
+            <Feather name="arrow-left" size={20} color="#111827" />
+          </Pressable>
+          <Text style={styles.headerTitle}>Create {activeTab}</Text>
+          <Pressable
+            onPress={handleRefresh}
+            style={styles.iconButton}
+            accessibilityRole="button"
+            accessibilityLabel="Refresh and start over"
+          >
+            <Feather name="refresh-cw" size={20} color="#6b7280" />
+          </Pressable>
+        </View>
 
       <View style={styles.tabBar}>
         {tabs.map((tab, index) => {
@@ -370,26 +595,34 @@ export function CreateMusicScreen({ onClose, onPlaySong }: CreateMusicScreenProp
 
       {showGenerateButton && (
         <View style={styles.generateCard}>
-          <Text style={styles.generateTitle}>Ready when you are</Text>
+          <Text style={styles.generateTitle}>
+            {completedTrack ? 'Your music is ready! 🎉' : 'Ready when you are'}
+          </Text>
           <Text style={styles.generatePrompt}>{enrichedPrompt}</Text>
           <Pressable
-            onPress={handleGenerate}
+            onPress={completedTrack ? handlePlayNow : handleGenerate}
             style={styles.generateButton}
             accessibilityRole="button"
+            disabled={generationProgress > 0 && generationProgress < 100}
           >
             {generationProgress > 0 && generationProgress < 100 ? (
-              <ActivityIndicator color="#ffffff" />
+              <View style={styles.progressContainer}>
+                <ActivityIndicator color="#ffffff" size="small" />
+                <Text style={styles.progressText}>Generating... {generationProgress}%</Text>
+              </View>
+            ) : completedTrack ? (
+              <Text style={styles.generateButtonLabel}>🎵 Play Now</Text>
             ) : (
-              <Text style={styles.generateButtonLabel}>
-                {generationProgress >= 100 ? 'Completed' : 'Generate'}
-              </Text>
+              <Text style={styles.generateButtonLabel}>Generate</Text>
             )}
           </Pressable>
-          {generationProgress > 0 && generationProgress < 100 ? (
+          {generationProgress > 0 && generationProgress < 100 && (
             <Text style={styles.generateStatus}>
-              {currentJobStatus ? currentJobStatus.replace(/_/g, ' ') : 'Generating…'}
+              {currentJobStatus === 'pending' ? 'Starting generation...' :
+               currentJobStatus === 'processing' ? 'Creating your music...' :
+               'Generating...'}
             </Text>
-          ) : null}
+          )}
         </View>
       )}
 
@@ -415,7 +648,8 @@ export function CreateMusicScreen({ onClose, onPlaySong }: CreateMusicScreenProp
           )}
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -439,6 +673,9 @@ const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
     backgroundColor: '#f9fafb',
+  },
+  content: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -546,6 +783,17 @@ const styles = StyleSheet.create({
   generateButtonLabel: {
     color: '#ffffff',
     fontWeight: '600',
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  progressText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    marginLeft: 8,
   },
   generateStatus: {
     marginTop: 8,

@@ -17,10 +17,24 @@ export default function CreateRoute() {
     router.replace('/(tabs)/now-playing');
   };
 
+  const handleReturnHome = () => {
+    router.replace('/(tabs)');
+  };
+
+  const handleClose = () => {
+    // Safe navigation: try to go back, or go to home if no back stack
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
+
   return (
     <CreateMusicScreen
-      onClose={() => router.back()}
+      onClose={handleClose}
       onPlaySong={handlePlay}
+      onReturnHome={handleReturnHome}
     />
   );
 }

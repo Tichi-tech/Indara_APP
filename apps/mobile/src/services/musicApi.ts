@@ -411,11 +411,29 @@ export const musicApi = {
     try {
       const { data, error } = await supabase
         .from('jobs')
-        .select('*, generated_tracks(*)')
+        .select('*')
         .eq('id', jobId)
         .maybeSingle();
 
       if (error) throw error;
+
+      // If the job has a result with track data, fetch the generated track separately
+      // Check both track_id (snake_case) and trackId (camelCase)
+      const trackId = data?.result?.track_id || data?.result?.trackId;
+
+      if (data && trackId) {
+        const { data: trackData } = await supabase
+          .from('generated_tracks')
+          .select('*')
+          .eq('id', trackId)
+          .maybeSingle();
+
+        // Attach track data to job for compatibility
+        if (trackData) {
+          data.generated_tracks = [trackData];
+        }
+      }
+
       return { data, error: null } as const;
     } catch (error) {
       console.error('Failed to check job status', error);
@@ -427,13 +445,33 @@ export const musicApi = {
     try {
       const { data, error } = await supabase
         .from('jobs')
-        .select('*, generated_tracks(*)')
+        .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (error) throw error;
-      return { data: data || [], error: null } as const;
+
+      // Fetch tracks for jobs that have track_id in result
+      const jobs = data || [];
+      for (const job of jobs) {
+        // Check both track_id (snake_case) and trackId (camelCase)
+        const trackId = job.result?.track_id || job.result?.trackId;
+
+        if (trackId) {
+          const { data: trackData } = await supabase
+            .from('generated_tracks')
+            .select('*')
+            .eq('id', trackId)
+            .maybeSingle();
+
+          if (trackData) {
+            job.generated_tracks = [trackData];
+          }
+        }
+      }
+
+      return { data: jobs, error: null } as const;
     } catch (error) {
       console.error('Failed to fetch user jobs', error);
       return { data: [], error } as const;
