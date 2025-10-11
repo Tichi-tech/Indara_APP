@@ -93,12 +93,16 @@ const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({ onBack, onNex
         
         <button
           onClick={onNext}
-          className="w-full bg-black text-white py-4 rounded-xl text-lg font-medium mb-8 flex items-center justify-center gap-3 transition-all duration-200 hover:bg-gray-800 active:scale-95"
+          className="w-full bg-black text-white py-4 rounded-xl text-lg font-medium mb-3 flex items-center justify-center gap-3 transition-all duration-200 hover:bg-gray-800 active:scale-95"
         >
           <Phone className="w-5 h-5" />
           Use my phone number
         </button>
-        
+
+        <p className="text-xs text-gray-500 text-center leading-relaxed mb-8 px-2">
+          By signing up with your phone number, you agree to receive SMS from Indara AI for account verification and service updates. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
+        </p>
+
         <div className="flex items-center gap-4 mb-8">
           <div className="flex-1 h-px bg-gray-300"></div>
           <span className="text-gray-500 text-sm">or</span>
@@ -145,9 +149,23 @@ const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({ onBack, onNex
       <div className="px-8 pb-8">
         <p className="text-sm text-gray-500 text-center leading-relaxed">
           By creating an account, you agree to the{' '}
-          <span className="text-red-500 underline">Terms of Service</span>{' '}
+          <a
+            href="https://indara.live/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-red-500 underline hover:text-red-600"
+          >
+            Terms of Service
+          </a>{' '}
           and acknowledge that you have read and understood the{' '}
-          <span className="text-red-500 underline">Privacy Policy</span>
+          <a
+            href="https://indara.live/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-red-500 underline hover:text-red-600"
+          >
+            Privacy Policy
+          </a>
         </p>
       </div>
     </div>
